@@ -1,0 +1,63 @@
+# Research Discussion Assignment 1 
+
+Please complete the research discussion assignment in a Jupyter or R Markdown notebook. You should post the GitHub link to your research in a new discussion thread.
+
+Now that we have covered basic techniques for recommender systems, choose one commercial recommender and describe how you think it works (content-based, collaborative filtering, etc). Does the technique deliver a good experience or are the recommendations off-target?
+
+You may also choose one of the three non-personalized recommenders (below) we went over in class and describe the technique and which of the three you prefer to use.
+
+1. Metacritic:  How We Create the Metascore Magic
+2. Rotten Tomatoes: About Rotten Tomatoes
+3. IMDB:  FAQ for IMDb Ratings
+
+Please complete the research discussion assignment in a Jupyter or R Markdown notebook. You should post the GitHub link to your research in a new discussion thread.
+
+Attacks on Recommender System
+
+Read the article below and consider how to handle attacks on recommender systems. Can you think of a similar example where a collective effort to alter the workings of content recommendations have been successful? How would you design a system to prevent this kind of abuse?
+
+Travis M. Andrews, The Washington Post (2017): Wisdom of the crowd? IMDb users gang up on Christian Bale’s new movie before it even opens.
+
+: 
+
+# My Response
+
+This assignment covers commercial and non-personalized recommender systems, includes an evaluation of a real-life example, and discusses problems caused by malicious attacks on recommendation systems.
+
+# Part 1: Commercial Recommender – YouTube
+
+YouTube uses a hybrid recommender system that combines collaborative filtering, content-based filtering, and deep learning models. The platform analyzes what similar users have watched (collaborative), the metadata and content of videos (content-based), and user behavior such as watch time, likes/dislikes, subscriptions, and click-through rates.
+
+The recommendations tend to be highly relevant. if I watch several videos on a topic (like machine learning), YouTube starts surfacing more content from related creators or topics even from small channels. However, the system can create a “filter bubble,” where it keeps reinforcing the same type of content, reducing diversity unless the user manually explores.
+
+Overall, the experience is strong, but sometimes skewed by trending videos or sensational content, which could be the result of optimizing for watch time rather than quality or balance.
+
+
+
+# Part 2: Non-Personalized Recommender – IMDb
+
+IMDb uses a weighted average system for its ratings. While the exact formula isn’t public, the site states that not all votes have equal weight, and the most active or trusted users are likely weighted more. Anonymous or new users may be discounted to prevent manipulation.
+
+While IMDb provides a useful snapshot of public opinion, it's not always reliable. Popular films often get high ratings right away, while niche or controversial titles may be targeted by users with an agenda.
+
+Compared to Metacritic and Rotten Tomatoes, I prefer IMDb for its broader user base and transparency about rating counts. However, Rotten Tomatoes is more helpful when I want to see a quick split between critic and audience responses.
+
+
+
+# Part 3: Attacks on Recommender Systems
+
+Recommender systems can be affected by review bombing, where users leave many negative reviews to lower a product’s rating. In the article about Amsterdam, IMDb users rated the movie poorly before it was even released. A similar case happened with The Last of Us Part II on Metacritic, where players left thousands of negative reviews right after launch.
+
+To prevent this, platforms could:
+
+Only allow reviews from verified users.
+
+Delay reviews until after the official release.
+
+Monitor sudden spikes in reviews.
+
+Show “recent” vs “all-time” review scores.
+
+# Conclusion
+
+Recommender systems play a critical role in guiding user choices across digital platforms. Commercial systems like Youtube benefit from hybrid approaches that combine user behavior, content area and collaborative trends to deliver personalized engaging suggestions. Non commercial recommender such as IMDB, offer valuable insights through aggregated user ratings, but they can be vulnerable to manipulation and bias.
