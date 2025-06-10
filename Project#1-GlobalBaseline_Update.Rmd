@@ -1,0 +1,516 @@
+---
+title: "Project 1: Global Baseline Predictors and RMSE"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    
+   
+---
+<style>
+/* Style for selected navigation link */
+a.active-link {
+  background-color: #ea7872 !important;
+  color: white !important;
+  padding: 6px 10px;
+  display: inline-block;
+  border-radius: 4px;
+}
+</style>
+
+
+<div style="text-align:center;"> 
+  <h1><B>DATA-612</B></h1>
+  <h2><B>Project 1-Global Baseline Predictors and RMSE</B></h2>
+  <h3><B>Author: Bikash Bhowmik, Rupendra Shrestha</B></h3> 
+  <h4><B>08 Jun 2025</B></h4>
+</div>
+
+Column {data-width=140}
+-----------------------------------------------------------------------
+
+
+
+### 
+<a href="#mySection0" style="font-size: 1em; font-weight: bold;" class="nav-link">Instruction</a>
+<br>
+<a href="#mySection01" style="font-size: 1em; font-weight: bold;" class="nav-link">Introduction</a>
+<br>
+<a href="#mySection1" style="font-size: 1em; font-weight: bold;" class="nav-link">Data Processing</a>
+<br>
+<a href="#mySection2" style="font-size: 1em; font-weight: bold;" class="nav-link">Train Dataset</a>
+<br>
+<a href="#mySection3" style="font-size: 1em; font-weight: bold;" class="nav-link">Test Dataset</a>
+<br>
+<a href="#mySection4" style="font-size: 1em; font-weight: bold;" class="nav-link">Create a User-Item Matrix</a>
+<br>
+<a href="#mySection5" style="font-size: 1em; font-weight: bold;" class="nav-link">Calculate User Bias</a>
+<br>
+<a href="#mySection6" style="font-size: 1em; font-weight: bold;" class="nav-link">Calculate Item Bias for User & Item</a>
+<br>
+<a href="#mySection7" style="font-size: 1em; font-weight: bold;" class="nav-link">Calculate the Baseline Predictor</a>
+<br>
+<a href="#mySection8" style="font-size: 1em; font-weight: bold;" class="nav-link">Calculate RMSE Calculation</a>
+<br>
+<a href="#mySection9" style="font-size: 1em; font-weight: bold;" class="nav-link">Summary</a>
+<br>
+<a href="#mySection10" style="font-size: 1em; font-weight: bold;" class="nav-link">Future Improvements</a>
+<br>
+
+
+
+
+Column {data-width=875}
+-----------------------------------------------------------------------
+### 
+<a id="mySection0"></a>
+
+
+```{r setup, warning=FALSE}
+ knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = TRUE)  
+ 
+# Load all required packages
+library(tidyverse)
+library(kableExtra)
+library(knitr)
+library(reshape2)
+library(ggplot2)
+```
+
+<font size="4">
+<B>
+We’ll attempt to predict ratings with very little information. We’ll first look at
+just raw averages across all (training dataset) users. We’ll then account for “bias” by normalizing
+across users and across items.
+We’ll be working with ratings in a user-item matrix, where each rating may be (1) assigned to a
+training dataset, (2) assigned to a test dataset, or (3) missing.
+
+</B>
+
+<font>
+• Briefly describe the recommender system that you’re going to build out from a business
+  perspective, e.g. “This system recommends data science books to readers.”
+
+• Find a dataset, or build out your own toy dataset. As a minimum requirement for complexity,
+  please include numeric ratings for at least five users, across at least five items, with some missing data.
+
+• Load your data into (for example) an R or pandas dataframe, a Python dictionary or list of lists, (or
+  another data structure of your choosing). From there, create a user-item matrix.
+  
+• If you choose to work with a large dataset, you’re encouraged to also create a small, relatively
+  dense “user-item” matrix as a subset so that you can hand-verify your calculations.
+
+• Break your ratings into separate training and test datasets.
+
+• Using your training data, calculate the raw average (mean) rating for every user-item combination.
+
+• Calculate the RMSE for raw average for both your training data and your test data.
+
+• Using your training data, calculate the bias for each user and each item.
+
+• From the raw average, and the appropriate user and item biases, calculate the baseline predictors
+  for every user-item combination.
+  
+• Calculate the RMSE for the baseline predictors for both your training data and your test data.
+
+• Summarize your results.
+
+<a id="mySection01"></a>
+<font size="4">
+<B>
+Introduction
+</B>
+<font>
+
+This project focuses on building a simple recommender system using global baseline predictors on a simulated dataset of book ratings by users.
+
+
+The baseline recommender estimates unknown ratings by considering three components:
+
+- The overall average rating (global mean),
+
+- A user bias — the tendency of a user to rate higher or lower than average,
+
+- An item bias — how a book tends to be rated across all users.
+
+Mathematically:
+
+Baseline Estimate = μ + b<sub>u</sub> + b<sub>i</sub>
+
+Where:
+- μ = global average rating,
+
+- b<sub>u</sub> = bias of user u (how much they deviate from μ),
+
+- b<sub>i</sub> = bias of item i (how much it deviates from μ).
+
+
+Baseline recommenders are often the first step in building scalable systems. They are interpretable, efficient, and lay the groundwork for more complex techniques like matrix factorization or deep learning.
+
+This project aims to:
+
+- Simulate sparse user-item rating data,
+
+- Predict unknown ratings using baseline predictors,
+
+- Evaluate accuracy using Root Mean Square Error (RMSE).
+
+
+
+
+<a id="mySection1"></a>
+<font size="4">
+<B>
+Data Processing
+</B>
+<font>
+
+We create a sample dataset representing ratings given by 10 users to 10 books. Ratings are randomly generated on a scale of 1 to 5, with some values intentionally set as missing (NA) to simulate real-world sparsity. The dataset is then split into training and test sets, ensuring that each contains a mix of observed and missing ratings. Additional missing values are introduced to better reflect incomplete user behavior. Finally, meaningful row and column labels are assigned to represent user and book names, preparing the data for visualization and analysis.
+
+```{r }
+# random sample of 100 ratings
+set.seed(612)
+df <- matrix(sample(1:5, 100, replace = TRUE), nrow = 10)
+
+# sample dataset for splitting
+split_df <- sample(1:length(df), 10, replace = FALSE)
+
+# split the data into train_dfing dataset
+train_df <- df
+train_df[split_df] <- NA
+
+# split the data into train_dfing dataset
+test_df <- df
+test_df[-split_df] <- NA
+
+# create some missing values for both dataset
+set.seed(612)
+missing_df <- sample(1:length(df), 10, replace = FALSE)
+df[missing_df] <- NA
+train_df[missing_df] <- NA
+test_df[missing_df] <- NA
+
+# name of the books
+users <- c("User_1","User_2","User_3","User_4","User_5","User_6","User_7","User_8","User_9","User_10")
+rownames(df) <- users
+rownames(train_df) <- users
+rownames(test_df) <- users
+
+# name of the users
+colname <- c("Book_1","Book_2","Book_3","Book_4","Book_5","Book_6","Book_7","Book_8","Book_9","Book_10")
+colnames(df) <- colname
+colnames(train_df) <- colname
+colnames(test_df) <- colname
+
+# print the matrix
+kable(df,caption = "User-Book Ratings") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") %>%
+    scroll_box(width = "100%", height = "300px")
+```
+
+<a id="mySection2"></a>
+<font size="4">
+<B>
+Train Dataset
+
+</B>
+<font>
+
+This section presents the training dataset, which is derived from the full user-book rating matrix by randomly selecting a subset of entries to retain while setting the rest to missing (NA). These observed values will be used to calculate the global average, user and item biases, and to train our prediction model. The remaining missing values simulate unknown ratings that the model will attempt to estimate.
+
+```{r }
+kable(train_df,caption = "train_dfing Dataset") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") %>%
+    scroll_box(width = "100%", height = "300px")
+```
+
+
+<a id="mySection3"></a>
+<font size="4">
+<B>
+Test Dataset
+
+</B>
+<font>
+Building a test dataset
+
+```{r }
+kable(test_df,caption = "test_df Dataset") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") %>%
+    scroll_box(width = "100%", height = "300px")
+```
+
+
+
+<a id="mySection4"></a>
+<font size="4">
+<B>
+Create a User-Item Matrix
+
+</B>
+<font>
+
+In this section, we generate a user-item matrix where each missing rating is replaced with the overall average rating from the training dataset. Using the replicate function, we fill the matrix with the global mean to create a baseline prediction model. This simple approach assumes that all users rate items similarly and serves as a benchmark for evaluating more advanced methods.
+
+```{r }
+# raw average
+raw_avg <- round(mean(train_df, na.rm = TRUE), 2)
+
+# user-item matrix for raw avearge
+user_item <- matrix(replicate(100, raw_avg), 10)
+rownames(user_item) <- rownames(train_df)
+colnames(user_item) <- colnames(train_df)
+
+kable(user_item,caption = "User-Item Matrix") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") %>%
+    scroll_box(width = "100%", height = "300px")
+
+
+# Melt the original matrix (with raw average or actual ratings)
+df_long <- melt(df, varnames = c("User", "Book"), value.name = "Rating")
+
+# Tile plot (categorical coloring)
+ggplot(df_long, aes(x = Book, y = User, fill = as.factor(Rating))) +
+  geom_tile(color = "white") +
+  scale_fill_brewer(palette = "YlGnBu", na.value = "gray90", name = "Rating") +
+  labs(title = "User-Item Matrix Tile Plot",
+       x = "Books", y = "Users") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+<a id="mySection5"></a>
+<font size="4">
+<B>
+Calculate a User Bias
+
+</B>
+<font>
+
+Each user has different rating behavior—some users rate generously, others more critically. The User bias represents how much a user’s average rating deviates from the global average.
+
+- Positive user bias → this user rates items higher than average.
+- Negative user bias → this user rates items lower than average.
+
+Calculating bias for each user using row Means function.
+
+```{r }
+# bias for each user
+user_bias <- round((rowMeans(train_df, na.rm = TRUE) - raw_avg), 2)
+
+kable(user_bias,caption = "User Bias") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") %>%
+    scroll_box(width = "100%", height = "300px")
+```
+
+
+<a id="mySection6"></a>
+<font size="4">
+<B>
+Calculate Item Bias for User & Item
+
+</B>
+<font>
+Calculating bias for each item using colMeans function
+
+
+- User Bias reflects how a particular user typically rates items compared to the global average. A positive bias means the user tends to give higher ratings than             average; a negative bias indicates lower ratings.
+  
+- Item Bias reflects how a particular item (book) is generally rated. For example, a book that’s consistently rated higher than the average across users will    
+            have a positive bias.
+
+These biases help correct for systemic tendencies in the data, improving the accuracy of predictions.
+
+
+```{r }
+# raw average
+raw_avg <- round(mean(train_df, na.rm = TRUE), 2)
+
+# bias for each item
+item_bias <- round((colMeans(train_df, na.rm = TRUE) - raw_avg), 2)
+
+kable(item_bias,caption = "Item Bias") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") %>%
+    scroll_box(width = "100%", height = "300px")
+```
+
+<font size="4">
+
+The baseline recommender system implemented here is based on a global baseline predictor model. It estimates a user's rating of an item by combining three components:
+
+- **Global Average (μ):** the overall average rating in the training dataset.
+- **User Bias (bᵤ):** how much a user's average rating deviates from the global average.
+- **Item Bias (bᵢ):** how much an item's average rating deviates from the global average.
+
+The formula used to compute the predicted rating is:
+
+\[
+\hat{r}_{ui} = \mu + b_u + b_i
+\]
+
+Where:
+- \(\hat{r}_{ui}\): predicted rating for user *u* and item *i*
+- \(\mu\): global average rating
+- \(b_u\): bias of user *u*
+- \(b_i\): bias of item *i*
+
+This simple model improves prediction accuracy by adjusting for consistent user and item tendencies. It's a foundational approach used in many recommender systems as a baseline for comparison.
+</font>
+
+
+<a id="mySection7"></a>
+<font size="4">
+<B>
+Calcualte the Baseline Predictor
+
+</B>
+<font>
+Calculating baseline predictors for every user-item combination
+
+The baseline predicted rating for a user \( u \) and item \( i \) is:
+
+\[
+\hat{r}_{ui} = \mu + b_u + b_i
+\]
+
+Where:  
+- \( \mu \): global average rating  
+- \( b_u \): user bias  
+- \( b_i \): item bias
+
+```{r }
+# calculate every user-item biases combination
+com <- apply(expand.grid((as_tibble(user_bias))[[1]], (as_tibble(item_bias))[[1]]), 1, sum)
+
+# baseline predictors for every user-item combination
+baseline <- (replicate(100, raw_avg) + com)
+baseline <- matrix(baseline, 10)
+
+rownames(baseline) <- rownames(train_df)
+colnames(baseline) <- colnames(train_df)
+
+kable(baseline,caption = "Item Bias") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") %>%
+    scroll_box(width = "100%", height = "300px")
+```
+
+
+
+<a id="mySection8"></a>
+<font size="4">
+<B>
+Calculate RMSE Calculation for Baseline Predictors
+
+</B>
+<font>
+Calculating RMSE for baseline predictors for training and testing data
+
+Root Mean Square Error (RMSE) measures the average difference between predicted and actual ratings. A lower RMSE indicates better prediction accuracy.
+
+
+round((sqrt(mean((x - y)^2, na.rm = TRUE))), 2)
+
+```{r }
+# function to calculate RMSE
+rmse <- function(x, y) {
+  round((sqrt(mean((x - y)^2, na.rm = TRUE))), 2)
+}
+
+# rmse for train_df dataset
+rmse1 <- rmse(train_df, raw_avg)
+
+# rmse for test_df dataset
+rmse2 <- rmse(test_df, raw_avg)
+
+# rmse for baseline predictors
+rmse3 <- rmse(test_df, baseline)
+rmse4 <- rmse(train_df, baseline)
+```
+
+
+
+<a id="mySection9"></a>
+<font size="4">
+<B>
+Summary
+
+</B>
+<font>
+
+In this project, we explored the foundation concept of global baseline predictors in recommender systems using a simulated user-book rating dataset. We began by constructing a user-item matrix and splitting the data into training and test sets, introducing missing values to mimic real-world sparsity. We calculated the global average rating and used it to generate a basic prediction model. Then, we incorporated user and item biases to enhance prediction accuracy through baseline predictors. RMSE scores were computed for both raw averages and bias-adjusted predictions, demonstrating how accounting for individual user and item tendencies improves performance. This simple yet powerful approach lays the groundwork for more sophisticated recommendation algorithms.
+
+```{r }
+# summary of the result
+kable(cbind(rmse1, rmse2, rmse3, rmse4), col.names = rep(c("Train", "Test"), 2),caption = "Summary") %>%
+  add_header_above(c("Raw Average" = 2, "Baseline Predictor" = 2)) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") 
+```
+
+Train RMSE Higher Than Test RMSE
+
+In this case, it may be due to:
+
+- The small dataset: there’s a high chance of random variation.
+
+- Some high-error values might have been retained in the train set.
+
+- Sparsity: fewer known values to learn from can cause the model to underperform during training.
+
+Although test RMSE often exceeds train RMSE, with small-scale or toy datasets, the reverse can occur because of sampling noise or overfitting to sparse data.
+
+
+
+<a id="mySection10"></a>
+<font size="4">
+<B>Future Improvements</B>
+<font>
+
+While baseline predictors are simple and effective for sparse data, the model can be significantly enhanced with the following techniques:
+
+<B>
+1. Regularization
+</B>
+
+Add penalties to large user/item biases when there's limited data. This helps avoid overfitting:
+- Example: shrink user biases if a user rated only 1-2 books.
+
+<B>
+2. Matrix Factorization
+</B>
+
+Learn latent features of users and items to predict ratings (e.g., via SVD or ALS). It’s the foundation of collaborative filtering.
+
+<B>
+3. Hybrid Recommenders
+</B>
+
+Use additional content features like book genres, user demographics, or textual reviews alongside ratings.
+
+<B>
+4. Neural Approaches
+</B>
+
+Deep learning models can capture non-linear patterns and are especially useful with large datasets.
+
+Implementing these techniques will improve scalability and prediction power, particularly in real-world systems.
+
+
+
+<script>
+// Highlight selected nav link on click
+document.querySelectorAll('.nav-link').forEach(function(link) {
+  link.addEventListener('click', function() {
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active-link'));
+    this.classList.add('active-link');
+  });
+});
+</script>
