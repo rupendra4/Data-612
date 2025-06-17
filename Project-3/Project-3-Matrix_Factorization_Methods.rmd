@@ -1,0 +1,494 @@
+---
+title: 'DATA-612 Recommender Systems'
+subtitle:  'Project 3 : Matrix Factorization methods'
+author: "Author: Bikash Bhowmik,Rupendra Shrestha "
+date: "22 Jun 2025"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+    latex_engine: xelatex
+    toc_depth: 2
+fontsize: 10pt
+geometry: margin=.2in
+---
+
+
+
+
+```{r setup, include=FALSE }
+ knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = TRUE)  
+ 
+# Load all required packages
+library(tidyverse)
+library(readr)
+library(sqldf)
+library(dplyr)
+library(tidyr)
+library(tinytex)
+library(recommenderlab)
+library(kableExtra)
+library(gridExtra)
+
+```
+
+# Instruction
+
+The goal of this assignment is give you practice working with Matrix Factorization techniques.
+
+Your task is implement a matrix factorization method-such as singular value decomposition (SVD) or Alternating Least Squares (ALS)-in the context of a recommender system.
+
++ SVD can be thought of as a pre-processing step for feature engineering. You might easily start with thousands or millions   of items, and use SVD to create a much smaller set of “k” items (e.g. 20 or 70).
++ SVD builds features that may or may not map neatly to items (such as movie genres or news topics). As in many areas of   
+  machine learning, the lack of explainability can be an issue).
++ SVD requires that there are no missing values. There are various ways to handle this, including
+
+1. imputation of missing values,
+2. mean-centering values around 0, or
+3. using a more advance technique, such as stochastic gradient descent to simulate SVD in populating the factored matrices.
+
++ Calculating the SVD matrices can be computationally expensive, although calculating ratings once the factorization is  
+  completed is very fast. You may need to create a subset of your data for SVD calculations to be successfully performed,   
+  especially on a machine with a small RAM footprint.
+
+# Introduction
+
+
+
+# Load Data
+
+Load the sample dataset with titles and ratings for movies from Movielens. To a void memory issues in R, used the smallest but relevant MovieLens Latest Datasets (“ml-latest-small.zip”) - Small: 100,000 ratings and 3,600 tag applications applied to 9,000 movies by 600 users.
+
+The data contains following:
+
+links.csv
+movies.csv
+ratings.csv
+tags.csv
+Primarily will be using movies.csv and ratings.csv to build a recommendation system.
+
+3 Show Source Data in Data Frame as Table
+
+```{r }
+# Load necessary libraries
+library(sqldf)
+library(readr)
+
+# Read the CSV files
+Ratings <- read_csv("Ratings.csv")
+Movies <- read_csv("Movies.csv")
+```
+
+
+```{r }
+sqldf("select * from Movies LIMIT 10") 
+
+```
+
+```{r }
+sqldf("select * from Ratings LIMIT 10")  
+
+```
+
+```{r }
+kable(head(Movies,10)) %>%
+  kable_styling(bootstrap_options = c("striped","hover","condensed","responsive"),full_width   = F,position = "left",font_size = 12) %>%
+  row_spec(0, background ="gray")
+```
+
+```{r }
+library(kableExtra)
+kable(head(Ratings, 10)) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
+```{r }
+kable(head(select(Ratings, userId:rating), 10)) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+```{r }
+sqldf("select * from Ratings LIMIT 10") 
+```
+
+4 Data Transformation
+4.1 Combine Data
+Create a “movie_ratings” from movies and corresponding ratings data frames
+
+```{r }
+movie_ratings <- merge(Ratings, Movies, by="movieId")
+kable(head(movie_ratings, 10)) %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+```
+
+4.2 Create Matrix
+Create a “movieMatrix”
+
+```{r }
+library(recommenderlab)
+
+# Select only necessary columns
+rating_data <- Ratings %>% select(userId, movieId, rating)
+
+# Convert to realRatingMatrix
+rating_matrix <- as(rating_data, "realRatingMatrix")
+
+# View basic summary
+rating_matrix
+```
+
+4.3 Build and Train Data Models
+In order to test any models, we need to split our data into training and testing sets with 80/20 ratio
+
+```{r }
+
+```
+
+
+```{r }
+library(recommenderlab)
+
+data("MovieLense")
+
+# Filter users with at least 20 ratings
+min_ratings <- 20
+filtered_data <- MovieLense[rowCounts(MovieLense) >= min_ratings, ]
+
+# Filter movies with at least 20 ratings
+filtered_data <- filtered_data[, colCounts(filtered_data) >= min_ratings]
+
+# Check size
+filtered_data
+
+set.seed(100)
+eval_scheme <- evaluationScheme(filtered_data, method = "split", train = 0.8, given = 3)
+
+train <- getData(eval_scheme, "train")
+known <- getData(eval_scheme, "known")
+unknown <- getData(eval_scheme, "unknown")
+
+r.als <- Recommender(train, method = "ALS", parameter = list(k = 5, normalize = "center"))
+
+p.als <- predict(r.als, known, type = "ratings")
+
+getRatingMatrix(p.als)[1:6, 1:6]
+
+error_als <- calcPredictionAccuracy(p.als, unknown)
+
+library(kableExtra)
+kable(as.data.frame(error_als), caption = "ALS Model Prediction Error")
+
+```
+
+
+4.4 Build and Test SVD, Funk SVD, and ALS recommendation algorithms
+
+```{r }
+
+# Train ALS recommender with fewer factors for numerical stability
+r.als <- Recommender(train, method = "ALS", parameter = list(k = 10, normalize = "center"))
+
+# Predict ratings on known data WITHOUT extra normalization (use known as is)
+p.als <- predict(r.als, known, type = "ratings")
+
+# Show first 6x6 block of predictions
+getRatingMatrix(p.als)[1:6, 1:6]
+
+# Calculate prediction error on unknown data
+error_als <- calcPredictionAccuracy(p.als, unknown)
+
+# Display error
+kable(as.data.frame(error_als), caption = "ALS Model Prediction Error")
+```
+
+
+
+5 Data Visualization
+Show the histogram of Movie data
+
+```{r }
+image(movieMatrix[1:100,1:100])
+```
+
+```{r }
+image(movieRealMatrix, main = "Raw Movie Data")
+```
+
+
+```{r }
+image(normalize(movieRealMatrix), main = "Normalized Movie Data")
+```
+
+
+
+```{r }
+library(ggplot2)
+#distribution of ratings
+rating_frq <- as.data.frame(table(Ratings$rating))
+ggplot(rating_frq,aes(Var1,Freq)) +   
+  geom_bar(aes(fill = Var1), position = "dodge", stat="identity",fill="palegreen")+ labs(x = "Score")
+```
+
+
+
+```{r }
+#distribution of rating mean of users
+user_summary <-  as.data.frame(cbind( 'mean'=rowMeans(movieRealMatrix),'number'=rowCounts(movieRealMatrix)))
+user_summary <-as.data.frame(sapply(user_summary, function(x) as.numeric(as.character(x))))
+par(mfrow=c(1,2))
+ggplot(user_summary,aes(mean)) +
+  geom_histogram(binwidth = 0.05,col='white',fill="plum") + labs(x = "User Average Score")+geom_vline(xintercept = mean(user_summary$mean),col='grey',size=2)
+```
+
+
+```{r }
+ggplot(user_summary,aes(number)) +
+  geom_histogram(binwidth = 0.8,fill="plum") + labs(x = "Number of Rated Items")
+```
+
+```{r }
+#distribution of rating mean of items
+item_summary <- as.data.frame(cbind('mean'=colMeans(movieRealMatrix), 'number'=colCounts(movieRealMatrix)))
+item_summary <-as.data.frame(sapply(item_summary, function(x) as.numeric(as.character(x))))
+par(mfrow=c(1,2))
+ggplot(item_summary,aes(mean)) +
+  geom_histogram(binwidth = 0.05,col='white',fill="sandybrown") + 
+  labs(x = "Item Average Score")+
+  geom_vline(xintercept = mean(item_summary$mean),col='grey',size=2)
+```
+
+```{r }
+ggplot(item_summary,aes(number)) +
+  geom_histogram(binwidth = 0.8,fill="sandybrown") + labs(x = "Number of Scores Item has")
+```
+
+```{r }
+m.cross <- evaluationScheme(movieRealMatrix[1:100], method = "cross", k = 4, given = 3, goodRating = 5)
+m.cross.results.svd <- evaluate(m.cross, method = "SVD", type = "topNList", n = c(1, 3, 5, 10, 15, 20))
+```
+
+```{r }
+m.cross.results.als <- evaluate(m.cross, method = "ALS", type = "topNList", n = c(1, 3, 5, 10, 15, 20))
+```
+
+
+```{r }
+par(mfrow=c(1,2))
+plot(m.cross.results.svd, annotate = TRUE, main = "ROC Curve for SVD")
+plot(m.cross.results.svd, "prec/rec", annotate = TRUE, main = "Precision-Recall for SVD")
+```
+
+```{r }
+par(mfrow=c(1,2))
+plot(m.cross.results.als, annotate = TRUE, main = "ROC Curve for ALS")
+plot(m.cross.results.als, "prec/rec", annotate = TRUE, main = "Precision-Recall for ALS")
+```
+
+
+
+
+6 User Based Collaborative Filtering (UBCF) Model
+Building a user-based collaborative filtering model in order to compare SVD model against other models.
+
+```{r }
+# UBCF model
+tictoc::tic("UBCF Model - Training")
+modelUBCF <- Recommender(train, method = "UBCF")
+tictoc::toc(log = TRUE, quiet = TRUE)
+
+tictoc::tic("UBCF Model - Predicting")
+predUBCF <- predict(modelUBCF, newdata = known, type = "ratings")
+tictoc::toc(log = TRUE, quiet = TRUE)
+
+( accUBCF <- calcPredictionAccuracy(predUBCF, unknown) )
+```
+
+
+
+
+7 Singular Value Decomposition (SVD) Model
+Singular value decomposition (SVD) matrix factorization method in the context of a recommender system. This is implemented in two ways:
+
+Using SVD to estimate similarity
+Using SVD to create a content-based recommender
+Singular Value Decomposition begins by breaking an M
+ by N
+ matrix A
+ (in this case M
+ users and N
+ jokes) into the product of three matrices: U
+, which is M
+ by M
+, Σ
+, which is M
+ by N
+, and VT
+, which is N
+ by N
+:
+
+A=U Σ VT
+
+
+The matrix Σ
+ is a diagonal matrix, with values representing the singular values by which A
+ can be decomposed. As these values decrease, continued calculation of A
+ using these values does not provide a useful return on computing power. By determining the number of singular values k
+ at which this point of diminishing returns occurs, the matrices can be reduced in size; their product can be used to closely approximate A
+ with less computational expense.
+
+
+The image above represents the dimensionality reduction in the matrices U
+, Σ
+, and VT
+ used to represent A
+. In cases where k
+ is much less than N
+, this can result in signifcant computational savings.
+
+```{r }
+# SVD model
+tictoc::tic("SVD Model - Training")
+modelSVD <- Recommender(train, method = "SVD", parameter = list(k = 100))
+tictoc::toc(log = TRUE, quiet = TRUE)
+
+tictoc::tic("SVD Model - Predicting")
+predSVD <- predict(modelSVD, newdata = known, type = "ratings")
+tictoc::toc(log = TRUE, quiet = TRUE)
+
+( accSVD <- calcPredictionAccuracy(predSVD, unknown) )
+```
+
+
+7.1 Run-Times
+Compare the run time of various Factorization calculations
+
+```{r }
+# Display log
+log <- as.data.frame(unlist(tictoc::tic.log(format = TRUE)))
+colnames(log) <- c("Run Time")
+knitr::kable(log, format = "html") %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+As can be seen SVD Training takes 200% more time than UBCF Training however the SVD Predictions takes 100% less time than UBCF Predictions.
+
+7.2 Predictions
+
+```{r }
+Predict popular movies based on high ratings for user#44
+movie_rated <- as.data.frame(movieRealMatrix@data[c("44"), ]) 
+colnames(movie_rated) <- c("Rating")
+movie_rated$movieId <- as.integer(rownames(movie_rated))
+movie_rated <- movie_rated %>% filter(Rating != 0) %>% 
+                inner_join (Movies, by="movieId") %>%
+                arrange(Rating) %>%
+                select(Movie = "title", Rating)
+knitr::kable(movie_rated, format = "html") %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+
+Identify recommended movies for user#44
+
+```{r }
+movie_recommend <- as.data.frame(predSVD@data[c("44"), ]) 
+colnames(movie_recommend) <- c("Rating")
+movie_recommend$movieId <- as.integer(rownames(movie_recommend))
+movie_recommend <- movie_recommend %>% 
+                  arrange(desc(Rating)) %>% head(6) %>% 
+                  inner_join (Movies, by="movieId") %>%
+                  select(Movie = "title")
+knitr::kable(movie_recommend, format = "html") %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+
+7.3 Manual Singular Value Decomposition
+Trying to build the SVD model without the use of recommender package functionality and instead using the base R provided svd function
+
+First the movie ratings matrix is normalized. NA values are replaced with 0 and there are negative and positive ratings. Now we can decompose original matrix.
+
+```{r }
+# Normalize matrix
+movieMatrix <- as.matrix(normalize(movieRealMatrix)@data)
+
+# Perform SVD
+movieSVD <- svd(movieMatrix)
+rownames(movieSVD$u) <- rownames(movieMatrix)
+rownames(movieSVD$v) <- colnames(movieMatrix)
+
+Sigmak <- movieSVD$d 
+Uk <- movieSVD$u 
+Vk <- t(as.matrix(movieSVD$v))
+
+```
+
+To estimate the value of k
+, the cumulative proportion of the length of the vector d represented by the set of items running through an index n is calculated and plotted. The values of n at which 80% and 90% of the vector’s length is included are found and plotted:
+
+
+
+The plot shows the descending order of the singular values quite clearly, with the magnitudes declining rapidly through the first 30 or so singular values before leveling out at a magnitude of somewhat less than 200.
+
+```{r }
+# Reduce dimensions
+n <- length(movieSVD$d)
+total_energy <- sum(movieSVD$d^2)
+for (i in (n-1):1) {
+  energy <- sum(movieSVD$d[1:i]^2)
+  if (energy/total_energy<0.9) {
+    n_dims <- i+1
+    break
+  }
+}
+
+trim_mov_D <- movieSVD$d[1:n_dims]
+trim_mov_U <- movieSVD$u[, 1:n_dims]
+trim_mov_V <- movieSVD$v[, 1:n_dims]
+```
+
+
+```{r }
+trimMovies <- as.data.frame(trim_mov_V) %>% select(V1, V2)
+trimMovies$movieId <- as.integer(rownames(trimMovies))
+
+movieSample <- trimMovies %>% arrange(V1) %>% head(5)
+movieSample <- rbind(movieSample, trimMovies %>% arrange(desc(V1)) %>% head(5))
+movieSample <- rbind(movieSample, trimMovies %>% arrange(V2) %>% head(5))
+movieSample <- rbind(movieSample, trimMovies %>% arrange(desc(V2)) %>% head(5))
+movieSample <- movieSample %>% inner_join(Movies, by = "movieId") %>% select(Movie = "title", Concept1 = "V1", Concept2 = "V2")
+movieSample$Concept1 <- round(movieSample$Concept1, 4)
+movieSample$Concept2 <- round(movieSample$Concept2, 4)
+
+knitr::kable(movieSample, format = "html") %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+```{r }
+# Plot labels without overlapping
+library(ggrepel)
+```
+
+```{r }
+ggplot(movieSample, aes(Concept1, Concept2, label=Movie)) + 
+  geom_point() +
+  geom_text_repel(aes(label=Movie), hjust=-0.1, vjust=-0.1, size = 3) +
+  scale_x_continuous(limits = c(-0.2, 0.2)) +
+  scale_y_continuous(limits = c(-0.1, 0.1)) 
+```
+
+
+
+The above plot demonstrates one of the disadvantages of the SVD method - inability to connect characteristics/concepts to real-world categories. As can be seen that all original Star Wars movies are close together or that Pulp Fiction and Ace Ventura are on opposites sides, but there is no clear way to categorize these movies.
+
+8 Conclusion
+Observations are as follows
+
+From the current sample, it seems centered data with base SVD outperforms
+SVD predictions are significantly faster compared to UBCF at the initial cost of time taken to build the training model
+SVD interpretation was a bit confusing and difficult
+In this dataset SVDF and SVD are showing providing similar results
+
