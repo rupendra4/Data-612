@@ -1,0 +1,29 @@
+---
+title: 'DATA-612 Recommender Systems'
+subtitle:  'Research Discussion Assignment'
+author: "Author: Rupendra Shrestha"
+date: "19 Jun 2025"
+output:
+  pdf_document:
+    #toc: true
+    #number_sections: true
+    latex_engine: xelatex
+    #toc_depth: 3
+fontsize: 10pt
+geometry: margin=.2in
+---
+
+
+# Ethical Gatekeepers or Bias Amplifiers?
+
+Recommender systems are undoubtedly powerful tools that shape our online experiences—whether discovering a new film, looking for a job, or networking with peers. Yet these systems do not act in a vacuum. They are trained on human behaviors, which are themselves shot through with implicit biases—be they racial, gendered, economic, or cultural.
+
+As the prompt notes, the reliance on historic data is both a virtue and an Achilles' heel. While it allows algorithms to "learn" from past preferences, it also encodes patterns of inequality. For instance, when job ads are shown disproportionately to men or housing ads to certain income brackets, it's not that the model was intended to discriminate—it's simply that the system picked up on biased correlations in past user behavior. Classic case of allocative harm, where opportunities are distributed unfairly by the system.
+
+In addition, the feedback loop created by engagement-based learning exacerbates this issue. If users are more likely to engage with content that reflects their preferences or biases, the system further limits their exposure—a situation described as filter bubbles. This is particularly troubling in applications like news recommendations or educational content, where diversity of perspective is crucial.
+
+But as data scientists, we are not powerless. There are ethical design strategies, for instance, incorporating fairness constraints (e.g., demographic parity, equal opportunity), that can mitigate such harms. Controlled diversity—ensuring recommendation lists include content from diverse sources and voices—works to broaden user exposure and attenuate marginalization. Such strategies have been experimented with by platforms such as Spotify and Netflix to bring underrepresented artists and genres to the fore.
+
+Last, recommender systems reflect our values. The algorithms—collaborative filtering or hybrids—aren't neutral in themselves. Our task is to make their development value-driven with ethics in mind. This means selecting representative training data, defining fairness metrics, and proactively auditing model outputs for disparate treatment.
+
+Conclusively, then, the question is not whether recommender systems are biased, but rather which bias we choose to address or ignore. As future practitioners, we must look beyond accuracy metrics and embrace fairness, accountability, and transparency as essential pillars of model evaluation.
