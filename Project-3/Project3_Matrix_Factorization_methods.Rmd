@@ -308,52 +308,12 @@ m.cross <- evaluationScheme(movieRealMatrix[1:300], method = "cross", k = 4, giv
 m.cross.results.svd <- evaluate(m.cross, method = "SVD", type = "topNList", n = c(1, 3, 5, 10, 15, 20))
 ```
 
-```{r }
-# Filter matrix
-movieRealMatrix_dense <- movieRealMatrix[rowCounts(movieRealMatrix) > 20, ]
-movieRealMatrix_dense <- movieRealMatrix_dense[, colCounts(movieRealMatrix_dense) > 20]
-
-# Check dimensions
-print(dim(movieRealMatrix_dense))
-
-# Recreate cleaned matrix
-mat_clean <- as(movieRealMatrix_dense, "matrix")
-mat_clean[is.na(mat_clean)] <- 0
-mat_clean[is.infinite(mat_clean)] <- 0
-movieRealMatrix_dense <- as(mat_clean, "realRatingMatrix")
-
-# Cross-validation and ALS evaluation
-m.cross <- evaluationScheme(movieRealMatrix_dense, method = "cross", k = 4, given = 3, goodRating = 5)
-
-m.cross.results.als <- tryCatch({
-  evaluate(m.cross, method = "ALS", type = "topNList", n = c(1, 3, 5, 10, 15, 20))
-}, error = function(e) {
-  message("ALS Evaluation Failed: ", e$message)
-  NULL
-})
-
-```
-
 
 ```{r }
 par(mfrow=c(1,2))
 plot(m.cross.results.svd, annotate = TRUE, main = "ROC Curve for SVD")
 plot(m.cross.results.svd, "prec/rec", annotate = TRUE, main = "Precision-Recall for SVD")
 ```
-
-```{r }
-par(mfrow=c(1,2))
-if (!is.null(m.cross.results.als)) {
-  par(mfrow = c(1, 2))
-  plot(m.cross.results.als, annotate = TRUE, main = "ROC Curve for ALS")
-  plot(m.cross.results.als, "prec/rec", annotate = TRUE, main = "Precision-Recall for ALS")
-} else {
-  message("Skipping ALS plots: Evaluation failed or returned NULL.")
-}
-
-```
-
-
 
 # User Based Collaborative Filtering (UBCF) Model
 
