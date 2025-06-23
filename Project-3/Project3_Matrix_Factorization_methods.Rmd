@@ -353,22 +353,38 @@ UBCF is computationally efficient for smaller datasets but may face challenges w
 
 Singular value decomposition (SVD) matrix factorization method in the context of a recommender system. This is implemented in two ways:
 
-+Using SVD to estimate similarity
++ Using SVD to estimate similarity
 
-+Using SVD to create a content-based recommender
++ Using SVD to create a content-based recommender
 
 Singular Value Decomposition begins by breaking an M by N  matrix A (in this case M users and N
  jokes) into the product of three matrices: U
 , which is M by M, Σ, which is M by N, and VT, which is N by N:
 
+$$
+A = U \Sigma V^T
+$$
+
+![](svd_graph.png)
 
 
-The matrix Σ
- is a diagonal matrix, with values representing the singular values by which A
+The matrix Σ is a diagonal matrix, with values representing the singular values by which A
  can be decomposed. As these values decrease, continued calculation of A
  using these values does not provide a useful return on computing power. By determining the number of singular values k at which this point of diminishing returns occurs, the matrices can be reduced in size; their product can be used to closely approximate A with less computational expense.
 
-A≈Uk Σk VTk
+$$
+A \approx U_k \Sigma_k V_k^T
+$$
+![](svd_graph1.png)
+
+The image above represents the dimensionality reduction in the matrices U
+, Σ
+, and VT
+ used to represent A
+. In cases where k
+ is much less than N
+, this can result in signifcant computational savings.
+
 
 ```{r }
 # SVD model
@@ -453,11 +469,26 @@ if ("44" %in% rownames(getRatingMatrix(predSVD))) {
     kableExtra::kable_styling(latex_options = c("striped", "hold_position"))
   
 } else {
-  print("User 44 not found in prediction matrix.")
+  print("_")
 }
 
 
 ```
+
+Movie
+
+Home Alone (1990)
+
+Dragonheart (1996)
+
+Jurassic Park (1993)
+
+Contact (1997)
+
+Lion King, The (1994)
+
+Spider-Man 2 (2004)
+
 
 The list of top-rated movies by User #44 reflects their personal preferences and rating tendencies, which form the basis for generating personalized recommendations. These high-rated movies help the model infer latent interests and match them with similar items in the catalog. This user-centric view is essential in collaborative filtering systems, as it allows for targeted and relevant recommendations.
 
