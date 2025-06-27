@@ -1,0 +1,11 @@
+# The Myth of Neutrality in Recommender Systems
+
+ 
+
+Recommender systems are often presented as neutral instruments—simply matching users with content they are statistically most likely to enjoy. However, this misconception of neutrality obscures the truth: these systems are engineered systematically for audience building, which in turn promotes polarizing, emotional, or non-verifiable content. Zeynep Tufekci's article illustrates this clearly in the context of YouTube. A viewer consuming political content or health information can suddenly find themselves nudged towards conspiratorial or extremist material, not as a result of algorithmic "bias" in the traditional sense, but simply because radical content performs better given the current reward structure. The algorithm works as designed.
+
+This underscores a further issue, the algorithmic bias is not solely entrenched in the data, nor is it merely in the model. The objective function has a bias. Algorithms that are designed to maximize watch-time (or clicks), will naturally converge towards a platform space under whatever keeps viewers' attention—this will often be outrage or fear. The radical content is not a bug, it's a feature.
+
+These objectives codify present-day business values into the award structure for the recommender systems.
+
+Thanks
