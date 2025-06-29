@@ -27,6 +27,8 @@ Column {data-width=150}
 <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection41" style="font-size: 1em; " >Data Exploration</a>
 <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection42" style="font-size: 1em; " >Genre Exploration</a>
+<br>
 <a href="#mySection5" style="font-size: 1em; font-weight: bold;" >Initial Recommender Systems</a>
 <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection51" style="font-size: 1em; " >Parameters</a>
@@ -165,7 +167,9 @@ finalRatings <- as(ratings, 'realRatingMatrix')
 </B>
 <font>
 
-We examined how many jokes each user has rated. Setting a minimum threshold of 36 jokes, we observed that the majority of users provided ratings for approximately 70 to 100 jokes.
+Let’s dive a little deeper into our data.
+
+First, let’s take a look at the number of jokes that each user has rated. We set the threshold at 36 jokes, and it appears that most individuals have rated either around 70 or 100 jokes.
 
 ```{r }
 jokeCount <- rowCounts(finalRatings)
@@ -188,7 +192,7 @@ hist(ratingCount,
      ylab = 'Number of Jokes') 
 ```
 
-We examined the average rating given to each joke. The median rating hovers just above zero, suggesting that, on average, users tend to rate jokes slightly positively, though the overall sentiment remains relatively neutral.
+Now we can take a look at the average rating across all jokes. The median average rating is a little over 0 (neutral), which means that jokes are typically rated with a small positive skew.
 
 
 ```{r }
@@ -197,7 +201,7 @@ mean_rating <- colMeans(finalRatings, na.rm = T)
 quantile(mean_rating)
 ```
 
-Analyzing the distribution of average ratings reveals that the majority of jokes fall within the range of -2 to 3. However, there are a few notable outliers—some jokes receive highly favorable ratings above 4, while others are rated quite negatively, dropping below -4.
+We can also plot the average ratings. A look at the distribution shows that most jokes have an average rating between -2 and 3. We have a few outliers that are rated more positively (+4) and more negatively (-4).
 
 
 ```{r }
@@ -205,7 +209,58 @@ goodrating <- quantile(mean_rating, .5)
 qplot(mean_rating) + ggtitle("Distribution of Average Joke Rating") + geom_vline(xintercept = goodrating, col='red')
 ```
 
-The plot shows that average joke ratings are fairly balanced around the median, which is just slightly above zero. Given this distribution, we’ve chosen a rating of 1 or higher as the cutoff point to classify a joke as 'good.' This allows us to focus on jokes that received noticeably more positive feedback.
+From this data exploration, we can see that most users rated all jokes and conversely, most jokes were rated by all users. The median average rating for the users is a little over 0, so we will use 1 as our threshold for a good joke.
+
+
+<a id="mySection42"></a>
+<font size="4">
+<B>
+ Genre Exploration
+</B>
+<font>
+
+
+
+```{r }
+### Genre Exploration 
+
+library(readxl)
+library(ggplot2)
+
+# Load the Jester dataset
+jester <- read_excel("jester-data-1.xls", col_names = FALSE)
+
+# Remove first column (rating count) and replace 99s with NA
+ratings <- jester[ , -1]
+ratings[ratings == 99] <- NA
+
+# Summary of ratings
+summary(ratings)
+
+# Histogram: how many jokes each user rated
+hist(rowSums(!is.na(ratings)),
+     main = "Number of Jokes Rated per User",
+     xlab = "Jokes Rated", ylab = "Users")
+
+# Histogram: how many users rated each joke
+hist(colSums(!is.na(ratings)),
+     main = "Number of Users per Joke",
+     xlab = "Users per Joke", ylab = "Jokes")
+
+# Histogram: average joke ratings
+avg_joke_rating <- colMeans(ratings, na.rm = TRUE)
+hist(avg_joke_rating,
+     main = "Average Rating per Joke",
+     xlab = "Avg Rating", ylab = "Jokes")
+
+
+```
+
+We explored the distribution of movie genres in the dataset. This helps evaluate whether the recommender covers a wide range of genres or mostly sticks to popular ones.
+
+
+
+
 
 <a id="mySection5"></a>
 <font size="4">
@@ -305,14 +360,12 @@ plot(finalResults, annotate = 1, legend = "topleft")
 title("ROC curve")
 ```
 
-The ROC curve illustrates the trade-off between true positive and false positive rates across different recommendation thresholds. From the plot, it's evident that the User-Based Collaborative Filtering (UBCF) models consistently achieve better performance, as indicated by their higher true positive rates at various levels of recommendations. This suggests that UBCF models are more effective at identifying jokes users are likely to enjoy, while minimizing incorrect recommendations. Given our goal of recommending genuinely funny jokes and avoiding irrelevant ones, the UBCF approach stands out as the most precise and reliable among the models evaluated.
+The goal of our recommender system is to provide jokes that are funny to a user, so we want to minimize the number of false positives (recommendations that are wrong). We will therefore choose the algorithm with the highest precision (true positive rate). Once again, the UBCF models outperform the others.
 
 ```{r }
 plot(finalResults, "prec/rec", annotate = 1, legend = "bottomright")
 title("Precision-recall")
 ```
-
-The Precision-Recall plot shows that UBCF models perform best, offering higher precision across different recall levels. This indicates they recommend more relevant jokes while minimizing incorrect suggestions.
 
 <a id="mySection54"></a>
 <font size="4">
@@ -450,8 +503,11 @@ Discussion
 </B>
 <font>
 
-In this project, we evaluated multiple recommender system algorithms using offline metrics such as precision and RMSE. These metrics helped us identify the most accurate models and guided the selection of a final user-based collaborative filtering (UBCF) model with Pearson similarity. 
+In this project, we evaluated several recommender system algorithms using offline metrics such as precision and RMSE to assess accuracy and effectiveness. These metrics guided our selection of User-Based Collaborative Filtering (UBCF) with Pearson similarity as a strong baseline model. To support user experience goals like novelty and diversity, we introduced a Hybrid Recommender that blends UBCF with a Random model.
 
-To support a user experience goal, we introduced novelty by combining the UBCF model with a random recommender in a hybrid system. While offline evaluation is useful for comparing algorithmic accuracy, it does not fully capture how users interact with recommendations in real-world settings. For a more comprehensive evaluation, online metrics such as click-through rate (CTR), dwell time, conversion rate, session engagement, and user retention would be essential. These metrics reflect actual user behavior and satisfaction, which are critical for system success. 
+In the final phase, we narrowed our focus to these two models—UBCF and the Hybrid—and concentrated on precision as our primary evaluation metric, as it most directly reflects the relevance of top-N recommendations. This focused comparison allowed us to assess the trade-off between pure accuracy and the added value of introducing novelty.
 
-An ideal online evaluation environment would use A/B testing to compare user responses to different recommendation strategies—for example, showing standard recommendations to one group and novelty-enhanced recommendations to another. Tools like Google Optimize or Firebase could manage A/B testing, while platforms such as Mixpanel or Amplitude could track user interactions like clicks and time spent. Data collected from these tools would provide valuable feedback for improving the recommendation system and aligning it more closely with user needs and business goals.
+While offline evaluation provides meaningful insights, it cannot fully capture how users engage with recommendations in real-world applications. For a more complete understanding, online metrics such as click-through rate (CTR), dwell time, and user retention are crucial. An ideal future evaluation environment would use A/B testing with tools like Google Optimize or Firebase, and user behavior tracking with platforms like Mixpanel or Amplitude. This would enable a more realistic, data-driven refinement of recommendation strategies tailored to user satisfaction and business impact.
+
+
+
