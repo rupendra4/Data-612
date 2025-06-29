@@ -1,0 +1,457 @@
+---
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+   
+---
+
+<div style="text-align:center;"> 
+  <h1><B>DATA 612 - Project 4 : Accuracy and Beyond </B></h1>
+  <h3><B>Bikash Bhowmik, Rupendra Shrestha</B></h3> 
+  <h4><B>29 Jun 2025</B></h4>
+</div>
+
+
+Column {data-width=150}
+-----------------------------------------------------------------------
+
+### 
+<a href="#mySection1" style="font-size: 1em; font-weight: bold;" >Instruction</a>
+<br>
+<a href="#mySection2" style="font-size: 1em; font-weight: bold;" >Introduction</a>
+<br>
+<a href="#mySection3" style="font-size: 1em; font-weight: bold;" >Load Data</a>
+<br>
+<a href="#mySection4" style="font-size: 1em; font-weight: bold;" >Data Cleansing</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection41" style="font-size: 1em; " >Data Exploration</a>
+<br>
+<a href="#mySection5" style="font-size: 1em; font-weight: bold;" >Initial Recommender Systems</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection51" style="font-size: 1em; " >Parameters</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection52" style="font-size: 1em; " >Creation of Systems</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection53" style="font-size: 1em; " >Comparisons</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection54" style="font-size: 1em; " >Model Tuning</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection55" style="font-size: 1em; " >Final Model</a>
+<br>
+<a href="#mySection6" style="font-size: 1em;font-weight: bold; " >Introduce Novelty</a>
+<br>
+<a href="#mySection7" style="font-size: 1em;font-weight: bold; " >Compare Results</a>
+<br>
+<a href="#mySection8" style="font-size: 1em;font-weight: bold; " >Discussion</a>
+<br>
+
+
+
+Column {data-width=875}
+-----------------------------------------------------------------------
+### 
+<a id="mySection1"></a> 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+# Load all required packages
+library(readxl)
+library(recommenderlab)
+library(ggplot2)
+```
+
+<font size="4">
+<B>
+Instruction
+</B>
+<font>
+
+The goal of this assignment is give you practice working with accuracy and other recommender system metrics.In this assignment you’re asked to do at least one or (if you like) both of the following:
+
+Work in a small group, and/or
+Choose a different dataset to work with from your previous projects.
+Deliverables
+As in your previous assignments, compare the accuracy of at least two recommender system algorithms against your offline data.
+
+Implement support for at least one business or user experience goal such as increased serendipity, novelty, or diversity.
+
+Compare and report on any change in accuracy before and after you’ve made the change in #2.
+
+As part of your textual conclusion, discuss one or more additional experiments that could be performed and/or metrics that could be evaluated only if online evaluation was possible. Also, briefly propose how you would design a reasonable online evaluation environment.
+
+
+<a id="mySection2"></a>
+<font size="4">
+<B>
+Introduction
+</B>
+<font>
+
+The project at hand is to build a recommender system that can provide users with personalized joke recommendations. In addition to optimizing for recommendations that are accurate, the recommender also focuses on maximizing user experience by adding some level of serendipity to the recommendations - meaning users will receive unexpected items with the potential to be enjoyable within their most highly recommended items. 
+
+Initially, we investigate the performance of five recommendation algorithms:
+
++ User-Based Collaborative Filtering (UBCF) using cosine and Pearson similarity
+
++ Item-Based Collaborative Filtering (IBCF) using cosine and Pearson similarity
+
++ A Random recommender algorithm (a baseline)
+
+For each method, we conduct a 3-fold cross-validation to evaluate precision and performance. After we establish the best performing algorithm, we promote novel items in the recommendation list by replacing a selection of the most recommended items with more novel items. In this approach we try to balance accurate recommendations with user engagement and discovery.
+
+<a id="mySection3"></a>
+<font size="4">
+<B>
+Load Data
+</B>
+<font>
+
+We use the Jester dataset, which includes joke ratings from 24,983 users. Each user has rated at least 36 jokes, with rating values ranging from -10.00 (least funny) to +10.00 (most funny). A rating of 99 indicates that a joke was not rated by the user. In the dataset, each row corresponds to a single user: the first column records the total number of jokes they rated, while the next 100 columns contain their individual ratings for each joke.
+
+```{r}
+# Load the jester dataset
+library(readxl)
+
+# Read the Excel file (first sheet)
+jester <- data.frame(read_xls("jester-data-1.xls", col_names = FALSE))
+
+# Assign column names: first column is rating count, followed by 100 joke ratings
+##colnames(jester) <- c("ratingCount", paste0("Joke_", 1:100))
+##row.names(jester) <- 1:nrow(jester)
+
+# Display the structure and first few rows of the data
+# str(jester)
+head(jester[, 1:6])  # Show the first 5 columns (rating count + 5 jokes)
+
+# Basic summary statistics for joke ratings
+summary(jester[, 2:6])
+
+```
+This gives a quick sense of how the data is structured and how ratings are distributed across the first few jokes. It also confirms that the dataset has the correct dimensions and types before moving on to data preprocessing.
+
+<a id="mySection4"></a>
+<font size="4">
+<B>
+Data Cleansing
+</B>
+<font>
+
+First, we will load in the jester data set. We will remove the column with the number of rated jokes because this will not be used in the recommendation system. Additionally, the raw data represents non-rated jokes as the number 99, so we will replace these values with nulls. Finally, we will subset the data to 5,000 users to speed up computation time.
+
+```{r }
+# Read jester data
+##jester <- data.frame(read_xls("jester-data-1.xls", col_names = FALSE))
+colnames(jester) <- c("ratingCount", seq(100))
+row.names(jester) <- 1:nrow(jester)
+
+# remove num jokes column
+ratings <- jester[-1]
+
+# replace 0 (no rating) with NULL
+ratings[ratings == 99] <- NA
+ratings <- ratings[1:5000,]
+ratings <- as.matrix(ratings)
+
+# Create large dgCMatrix
+finalRatings <- as(ratings, 'realRatingMatrix')
+```
+
+<a id="mySection41"></a>
+<font size="4">
+<B>
+ Data Exploration
+</B>
+<font>
+
+We examined how many jokes each user has rated. Setting a minimum threshold of 36 jokes, we observed that the majority of users provided ratings for approximately 70 to 100 jokes.
+
+```{r }
+jokeCount <- rowCounts(finalRatings)
+hist(jokeCount,
+     main = 'Number of Jokes Rated per User',
+     xlab = 'Number of Jokes Rated',
+     ylab = 'Number of Users')
+
+```
+
+Next, we can look at the number of ratings that each joke has. We can see that many of the jokes were rated by all 5000 users.
+
+
+
+```{r }
+ratingCount <- colCounts(finalRatings)
+hist(ratingCount,
+     main = 'Number of Individuals Rating each Joke',
+     xlab = 'Number of Users that Rated Joke',
+     ylab = 'Number of Jokes') 
+```
+
+We examined the average rating given to each joke. The median rating hovers just above zero, suggesting that, on average, users tend to rate jokes slightly positively, though the overall sentiment remains relatively neutral.
+
+
+```{r }
+# average rating
+mean_rating <- colMeans(finalRatings, na.rm = T)
+quantile(mean_rating)
+```
+
+Analyzing the distribution of average ratings reveals that the majority of jokes fall within the range of -2 to 3. However, there are a few notable outliers—some jokes receive highly favorable ratings above 4, while others are rated quite negatively, dropping below -4.
+
+
+```{r }
+goodrating <- quantile(mean_rating, .5)
+qplot(mean_rating) + ggtitle("Distribution of Average Joke Rating") + geom_vline(xintercept = goodrating, col='red')
+```
+
+The plot shows that average joke ratings are fairly balanced around the median, which is just slightly above zero. Given this distribution, we’ve chosen a rating of 1 or higher as the cutoff point to classify a joke as 'good.' This allows us to focus on jokes that received noticeably more positive feedback.
+
+<a id="mySection5"></a>
+<font size="4">
+<B>
+Initial Recommender Systems
+</B>
+<font>
+
+
+<a id="mySection51"></a>
+<font size="4">
+<B>
+Parameters
+</B>
+<font>
+
+We’ll define the following:
+
++ Training Percent: The percent of the data that should be used in training. The remaining data will be used for testing.
+
++ Items To Keep: The total number of items that will be used to generate the recommendations. The remaining items will be used to test the model                accuracy. We’ll identify the min number of jokes that an individual has rated and use a few less than that.
+
++ Rating Threshold: The threshold to be used for positive ratings. Since our data is on a scale of -10 to 10, we will use 1 as the threshold for a good joke.
+
++ Number of Folds: This is the number of folds that will be used for k-fold validation.
+
+Finally, we’ll define our evaluation scheme for the models.
+
+```{r }
+trainPct <- 0.8
+toKeep <- min(rowCounts(finalRatings)) - 5
+ratingThreshold <- 1
+nFold <- 3
+
+# define evaluation scheme
+evalScheme <- evaluationScheme(finalRatings, 
+                               method = "cross-validation", 
+                               k = nFold, 
+                               given = toKeep, 
+                               goodRating = ratingThreshold)
+```
+
+
+<a id="mySection52"></a>
+<font size="4">
+<B>
+Creation of Systems
+</B>
+<font>
+
+Now that we’ve set up the evaluation scheme for our recommender systems, we can compare different models. We will evaluate the output of 2 IBCF models (using cosine and pearson similarities), 2 UBCF models (once again, using cosine and pearson similarities), and 1 random model for a baseline. We will also vary the number of recommendations from 5 to 20.
+
+
+```{r }
+# models to compare
+evalModels <- list(
+ IBCF_cos = list(name = "IBCF", param = list(method =
+ "cosine")),
+ IBCF_cor = list(name = "IBCF", param = list(method =
+ "pearson")),
+ UBCF_cos = list(name = "UBCF", param = list(method =
+ "cosine")),
+ UBCF_cor = list(name = "UBCF", param = list(method =
+ "pearson")),
+ RANDOM = list(name = "RANDOM", param = NULL)
+)
+
+# number of recommendations
+nRecs <- c(1, seq(5, 20, 5))
+
+finalResults <- evaluate(x = evalScheme, method = evalModels, n = nRecs)
+
+```
+
+
+
+<a id="mySection53"></a>
+<font size="4">
+<B>
+Comparisons
+</B>
+<font>
+
+We can look at the average results across all folds for each algorithm. Each row represents a different number of recommendations. We can see that on average, as the number of recommendations increases, so does our accuracy.
+
+```{r }
+avgs <- lapply(finalResults, avg)
+avgs
+
+```
+
+We can also visualize the ROC curves for each of the algorithms we’ve run. Each marker on the graph represents the TP/FP ratio for n
+ recommendations. The plot shows higher performance from the UBCF models.
+ 
+```{r }
+plot(finalResults, annotate = 1, legend = "topleft")
+title("ROC curve")
+```
+
+The ROC curve illustrates the trade-off between true positive and false positive rates across different recommendation thresholds. From the plot, it's evident that the User-Based Collaborative Filtering (UBCF) models consistently achieve better performance, as indicated by their higher true positive rates at various levels of recommendations. This suggests that UBCF models are more effective at identifying jokes users are likely to enjoy, while minimizing incorrect recommendations. Given our goal of recommending genuinely funny jokes and avoiding irrelevant ones, the UBCF approach stands out as the most precise and reliable among the models evaluated.
+
+```{r }
+plot(finalResults, "prec/rec", annotate = 1, legend = "bottomright")
+title("Precision-recall")
+```
+
+The Precision-Recall plot shows that UBCF models perform best, offering higher precision across different recall levels. This indicates they recommend more relevant jokes while minimizing incorrect suggestions.
+
+<a id="mySection54"></a>
+<font size="4">
+<B>
+ Model Tuning
+</B>
+<font>
+
+Based on this analysis, we will choose the UBCF model with Pearson similarity and 5 recommendations. We can further tune nn parameter for the the model.
+
+```{r }
+numNeighbors <- seq(100,200,50)
+
+ubcfModels <- lapply(numNeighbors, function(n){
+ list(name = "UBCF", param = list(method = "pearson", nn = n))
+})
+names(ubcfModels) <- paste0("UBCF_", numNeighbors)
+
+ubcfSchemes <- evaluate(x = evalScheme, method = ubcfModels, n = 5)
+
+```
+We’ll pick the model with the best precision, which is 200 neighbors:
+
+```{r}
+avg(ubcfSchemes)
+
+```
+
+<a id="mySection55"></a>
+<font size="4">
+<B>
+ Final Model
+</B>
+<font>
+
+Now, we can define our final model and calculate the precision and RMSE:
+
+```{r }
+set.seed(200)
+
+# UBCF Model
+ubcfRec <- Recommender(getData(evalScheme, "train"), 'UBCF', parameter = list(method = 'pearson', nn = 200, normalize = 'center'))
+ubcfPredN <- predict(ubcfRec, getData(evalScheme, "known"), n = 5)
+ubcfPredR <- predict(ubcfRec,getData(evalScheme,'known'), type = 'ratings')
+
+# calc accuracy on test set
+ubcfAccN <- calcPredictionAccuracy(ubcfPredN, 
+                                   getData(evalScheme, "unknown"), 
+                                   given = toKeep, 
+                                   goodRating = ratingThreshold)
+
+ubcfAccR <- calcPredictionAccuracy(ubcfPredR, getData(evalScheme, "unknown"))
+
+ubcfAccN
+```
+
+
+```{r }
+ubcfAccR
+```
+
+
+
+<a id="mySection6"></a>
+<font size="4">
+<B>
+Introduce Novelty
+</B>
+<font>
+
+In order to introduce novelty to the recommendations, we’ll take a percentage of the top recommendations from the UBCF model and switch the recommendations out with randomly selected jokes. To do this, we’ll define a recommendation system using the RANDOM methodology and then create a hybrid recommender that combines it with the UBCF model.
+
+
+```{r }
+# Random Model
+randRec <- Recommender(getData(evalScheme, "train"), 'RANDOM')
+
+hybridRec <- HybridRecommender(ubcfRec,randRec, weights = c(0.8,0.2))
+hybridPredN <- predict(hybridRec, getData(evalScheme, "known"), n = 5)
+hybridPredR <- predict(hybridRec, getData(evalScheme,'known'), type = 'ratings')
+
+# calc accuracy on test set
+hybridAccN <- calcPredictionAccuracy(hybridPredN, 
+                                     getData(evalScheme, "unknown"), 
+                                     given = toKeep, 
+                                     goodRating = ratingThreshold)
+hybridAccR <- calcPredictionAccuracy(hybridPredR, getData(evalScheme, "unknown"))
+
+hybridAccN
+```
+
+
+
+```{r }
+hybridAccR
+```
+
+<a id="mySection7"></a>
+<font size="4">
+<B>
+Compare Results
+</B>
+<font>
+
+
+We can compare the results of the UBCF-only model vs the hybrid model. The precision is worse in the hybrid model and the RMSE is higher.
+ 
+
+
+```{r}
+data.frame(METHOD = c('UBCF','HYBRID'), 
+           PRECISION = c(ubcfAccN['precision'], hybridAccN['precision']),
+           RMSE = c(ubcfAccR['RMSE'], hybridAccR['RMSE']))
+```
+
+We can also take a look at a comparison of the top 5 suggestions for one of the users. From this, we can see two things:
+
+The ordering has changed in the recommendations.
+
+There are new items in the hybrid system, which represent the random recommendations.
+
+```{r}
+hybridPredN@items[2]
+```
+
+```{r}
+ubcfPredN@items[2]
+```
+
+
+<a id="mySection8"></a>
+<font size="4">
+<B>
+Discussion
+</B>
+<font>
+
+In this project, we evaluated multiple recommender system algorithms using offline metrics such as precision and RMSE. These metrics helped us identify the most accurate models and guided the selection of a final user-based collaborative filtering (UBCF) model with Pearson similarity. 
+
+To support a user experience goal, we introduced novelty by combining the UBCF model with a random recommender in a hybrid system. While offline evaluation is useful for comparing algorithmic accuracy, it does not fully capture how users interact with recommendations in real-world settings. For a more comprehensive evaluation, online metrics such as click-through rate (CTR), dwell time, conversion rate, session engagement, and user retention would be essential. These metrics reflect actual user behavior and satisfaction, which are critical for system success. 
+
+An ideal online evaluation environment would use A/B testing to compare user responses to different recommendation strategies—for example, showing standard recommendations to one group and novelty-enhanced recommendations to another. Tools like Google Optimize or Firebase could manage A/B testing, while platforms such as Mixpanel or Amplitude could track user interactions like clicks and time spent. Data collected from these tools would provide valuable feedback for improving the recommendation system and aligning it more closely with user needs and business goals.
