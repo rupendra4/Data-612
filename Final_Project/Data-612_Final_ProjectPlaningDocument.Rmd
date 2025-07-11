@@ -1,0 +1,153 @@
+# Final Project Planning Document
+
+CUNY Data Science 612 – Recommender Systems
+
+Student Name: <b> Rupendra Shrestha </b> and <b>Bikash Bhowmik </b> (Group Project)
+
+<b> Project Title: Scalable Movie Recommendation System Using Spark-Based Collaborative Filtering</b>
+
+Submission Date: <b> July 10, 2025 </b>
+
+
+
+<font size="4">
+<B>
+<br>
+<br>
+<br>
+<u>
+Project Overview
+</u>
+</B>
+<font>
+
+
+<div style="text-align: justify;">
+
+This project aims to build a scalable, data-driven movie recommendation system using the <B> MovieLens 1M dataset </B> , which consists of over 1 million user ratings on 4,000 movies from approximately 6,000 users. The system will focus on implementing collaborative filtering algorithms using Apache Spark, taking advantage of distributed computing to handle large-scale data efficiently. Additionally, comparisons with traditional R-based recommender frameworks (such as recommender lab) may be performed to evaluate performance, accuracy, and runtime trade-offs.
+</div>
+
+The idea behind collaborative filtering is to recommend items by identifying users with similar rating patterns. If two users have liked similar movies in the past, we can recommend movies that one has rated highly and the other hasn’t seen yet.
+
+The project will proceed through a structured and detailed methodology that includes:
+
+•	Data preprocessing and cleaning to ensure the dataset is ready for modeling.
+
+•	Model development using Spark’s ALS (Alternating Least Squares) for matrix factorization.
+
+•	Model evaluation using standard metrics such as RMSE and MAE.
+
+•	Scalability and performance analysis, comparing Spark models with traditional implementations in R.
+
+The system will provide personalized movie recommendations based solely on historical user ratings, without relying on content-based features like genres or tags.
+
+<font size="4">
+<B>
+<br>
+<br>
+<u>
+Dataset
+</u>
+</B>
+<font>
+
+
+<div style="text-align: justify;">
+For this project, we will be using the Movie Lens 1M dataset, a widely recognized benchmark dataset for building and evaluating recommender systems. It contains over 1 million explicit ratings (ranging from 0.5 to 5.0 stars) submitted by 6,000 users for more than 4,000 movies. In addition to ratings, the dataset includes valuable metadata such as movie genres, timestamps, and user-generated tags, allowing for flexibility in developing both collaborative and hybrid recommendation models. The dataset’s large scale and richness make it well-suited for testing matrix factorization techniques like Alternating Least Squares (ALS), as well as user-based and item-based collaborative filtering. One of the main goals of using this dataset is to explore the performance and scalability of recommender systems in a distributed computing environment using Apache Spark, while optionally comparing results with traditional R-based tools like recommender lab. The data will undergo comprehensive cleaning and preprocessing to address sparsity, ID mapping, and formatting issues, ensuring it is ready for model training, evaluation, and tuning.
+</div>
+
+<font size="4">
+<B>
+<br>
+<br>
+<u>
+Plan and Methodology
+</u>
+</B>
+<font> 
+
+<div style="text-align: justify;">
+The objective of this project is to design, implement, and evaluate a scalable recommender system using the MovieLens 1M dataset, with a strong emphasis on collaborative filtering and matrix factorization techniques. The system will be built using Apache Spark, accessed via R through the sparklyr package, to leverage distributed computing and handle the large volume of data efficiently. The project will begin by loading the dataset (preferably from GitHub to ensure reproducibility) and performing an initial exploration to understand the structure and assess whether data transformation is required. This may include sub-setting relevant columns such as movie titles, genres, ratings, and timestamps.
+
+The next step will involve testing multiple recommendation strategies. Initially, both user-based (UBCF) and item-based (IBCF) collaborative filtering models will be implemented using similarity metrics like cosine similarity, leveraging R packages such as recommender lab or ecosystem. To address scalability and efficiency, Spark’s Alternating Least Squares (ALS) algorithm will also be used for matrix factorization, allowing us to compare performance across local and distributed computing platforms.
+
+As part of model preparation, the data will be converted into a suitable format such as a sparse rating matrix, with appropriate normalization applied if necessary. Similarity calculations and statistical summaries—like rating distributions and sparsity levels—will help guide model selection and evaluation. The dataset will be split into training and test sets, and each model will be trained and validated using standard metrics such as RMSE, MAE, precision, and recall. Evaluation tools such as ROC curves or top-N recommendation accuracy may be used to visually and quantitatively compare model performance.
+
+The ultimate goal is to identify the most effective recommendation strategy through performance testing, scalability evaluation, and model optimization. The entire process—from data ingestion to final evaluation—will be thoroughly documented and implemented in a reproducible and modular way.
+
+</div>
+
+<font size="4">
+<B>
+<br>
+<br>
+<u>
+Cloud Deployment Plan
+</u>
+</B>
+<font>
+
+
+To meet cloud deployment requirements, the following AWS components will be integrated into the project:
+
+1. <b> Amazon S3 </b> : Use AWS CLI from EC2 to pull data directly into Spark/R
+
+2. <b> Amazon EC2 (Free Tier eligible) </b>: Launch an EC2 instance (Amazon Linux 2) with R, Spark, and Shiny installed
+
+3. <b> Virtual Private Cloud (VPC) </b>: Deploy all services within a custom VPC
+
+<font size="4">
+<B>
+<br>
+<br>
+<u>
+Tools and Frameworks
+</u>
+</B>
+<font>
+
+
+•	R and R Markdown for modeling, visualization, and reporting
+
+•	<b> Spark </b> via sparklyr for distributed computation and ALS modeling
+
+•	ggplot2, dplyr, recommender lab, ecosystem for exploration and evaluation
+
+•	<b> AWS EC2, S3, and VPC </b> : scalable and secure cloud infrastructure
+
+<font size="4">
+<B>
+<br>
+<br>
+<u>
+Evaluation Plan
+</u>
+</B>
+<font>
+
+
+We plan to evaluate model performance using below:
+
+•	RMSE/MAE for rating prediction accuracy.
+
+•	Precision@k and Recall@k for top recommendation.
+
+•	Visualizations ( histograms, ROC curves, rating distributions )
+
+•	Scalability and runtime comparisons.
+
+<font size="4">
+<B>
+<br>
+<br>
+<u>
+Summary
+</u>
+</B>
+<font> 
+
+<div style="text-align: justify;">
+This planning document presents a proposal to develop a scalable and robust movie recommender system using the MovieLens 1M dataset. The project will explore multiple recommendation techniques, including user-based and item-based collaborative filtering, as well as matrix factorization using Spark’s ALS algorithm to handle large-scale data efficiently. We will deploy the full pipeline in the AWS cloud using EC2 (compute), S3 (storage), and VPC (security). The overarching goal is to build a high-performing recommendation engine that not only delivers accurate predictions but also demonstrates key principles and practical applications of recommender systems as covered in CUNY DATA 612.
+</div>
+
+
