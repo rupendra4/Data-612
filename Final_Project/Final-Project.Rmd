@@ -1,0 +1,945 @@
+---
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+   
+---
+
+<div style="text-align:center;"> 
+  <h1><B>DATA 612 - Final Project :  </B></h1>
+  <h3><B>Bikash Bhowmik , Rupendra Shrestha---- 19 Jul 2025</B></h3> 
+</div>
+
+
+Column {data-width=150}
+-----------------------------------------------------------------------
+
+### 
+<a href="#mySection1" style="font-size: 1em; font-weight: bold;" >Instruction</a>
+<br>
+<a href="#mySection2" style="font-size: 1em; font-weight: bold;" >Introduction</a>
+<br>
+<a href="#mySection3" style="font-size: 1em; font-weight: bold;" >Dataset</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection4" style="font-size: 1em; font-weight: bold;" >Data Exploration</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection5" style="font-size: 1em; font-weight: bold;" >Data Wrangling</a>
+<br>
+<a href="#mySection6" style="font-size: 1em; font-weight: bold;" >Model Exploration</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection7" style="font-size: 1em;font-weight: bold; " >Data Distribution</a>
+<br>
+<a href="#mySection8" style="font-size: 1em;font-weight: bold; " >Collaborative Filtering Model</a>
+<br>
+<a href="#mySection9" style="font-size: 1em;font-weight: bold; " >Item-based Collaborative Filtering</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection10" style="font-size: 1em;font-weight: bold; " >Building the IBCF model</a>
+<br>
+<a href="#mySection11" style="font-size: 1em;font-weight: bold; " >User-based Collaborative Filtering Model</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection12" style="font-size: 1em;font-weight: bold; " >Building the UBCF model</a>
+<br>
+<a href="#mySection13" style="font-size: 1em;font-weight: bold; " >Evaluation of model</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection14" style="font-size: 1em;font-weight: bold; " >Accuracy Measures</a>
+<br>
+<a href="#mySection15" style="font-size: 1em;font-weight: bold; " >Probability thresholds</a>
+<br>
+<a href="#mySection16" style="font-size: 1em;font-weight: bold; " >Comparing models</a>
+<br>
+<a href="#mySection17" style="font-size: 1em;font-weight: bold; " >Ideal model</a>
+<br>
+<a href="#mySection18" style="font-size: 1em;font-weight: bold; " >Spark Implementation</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection19" style="font-size: 1em;font-weight: bold; " >Spark Accuracy Measures</a>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="#mySection20" style="font-size: 1em;font-weight: bold; " >Spark Prediction</a>
+<br>
+<a href="#mySection21" style="font-size: 1em;font-weight: bold; " >Evaluation Metrics for the Recommended System</a>
+<br>
+<a href="#mySection22" style="font-size: 1em;font-weight: bold; " >Summary</a>
+<br>
+
+
+Column {data-width=875}
+-----------------------------------------------------------------------
+### 
+<a id="mySection1"></a>
+<font size="4">
+<B>
+Instruction
+</B>
+<font>
+
+Hands on with AWS
+This assignment is designed to get you some hands-on assignment with deploying a cloud
+solution. Take one of your previous assignments and deploy it in AWS. You may also choose to
+do this as part of your final project and submit both this assignment and the final project at the
+same time.
+To get full credit for this assignment, your cloud solution must include the following pieces:
+• Utilize some sort of long term storage. This can either be a database like RDS or file
+storage like S3.
+• Utilize some sort of compute service. This can be a virtual machine like EC2 or a
+compute solution like AWS Lambda.
+• Utilize at least one VPC to ensure that only you or your application are the only ones
+that can access your data.
+If you choose to, you may pay for AWS services, but keep it mind it can get expensive. With that
+said, this assignment has been designed, so that it can be completed using only capacities
+provided by the AWS Free Tier. All the services in the Free Tier can be found here:
+https://aws.amazon.com/free/?all-free-tier
+Submission: Submit a video link where you walk through all three aspects mentioned above.
+Discuss why you chose the specific solution. What are its advantages and disadvantages for the
+compute and storage parts.
+
+
+
+<a id="mySection2"></a>
+<font size="4">
+<B>
+Introduction
+</B>
+<font>
+
+This project focuses on analyzing the MovieLens dataset using Collaborative Filtering techniques to predict user-item ratings. Specifically, it implements the Alternating Least Squares (ALS) algorithm in Apache Spark to generate recommendations and evaluate prediction accuracy.
+
+Collaborative Filtering is a popular method for making automated predictions about a user's interests by leveraging the preferences and behaviors of many users. With Spark's ALS model, both users and items are represented by a set of latent factors, which are learned from the data and used to estimate missing ratings.
+
+<a id="mySection3"></a>
+<font size="4">
+<B>
+Dataset
+</B>
+<font>
+
+We have used the MovieLens 1M dataset, which contains 1 million ratings from 6,000 users on 4,000 movies. Each rating is an integer between 1 and 5, and the dataset includes demographic information about users (age, gender, occupation, zip code) as well as movie metadata (title, genres). This well-structured dataset is widely used in recommender system research and is suitable for building collaborative filtering and hybrid models.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+# Load all required packages
+library(tidyverse)
+library(recommenderlab)
+library(knitr)
+library(sparklyr)
+library(dplyr)
+library(kableExtra)
+library(data.table)
+
+sc <- spark_connect(master = "local", version = "3.1.2")
+
+```
+
+```{r }
+
+movies <- read.csv("http://recom-system-data-final-project.s3-website.us-east-2.amazonaws.com/movies.csv", 
+                   stringsAsFactors = FALSE)
+
+ratings <- read.csv("http://recom-system-data-final-project.s3-website.us-east-2.amazonaws.com/ratings.csv", 
+                    stringsAsFactors = FALSE)
+
+```
+
+<a id="mySection4"></a>
+<font size="4">
+<B>
+Data Exploration
+</B>
+<font>
+
+
+
+```{r }
+summary(movies)
+```
+
+```{r }
+summary(ratings)
+```
+
+```{r }
+nrow(ratings)
+```
+
+```{r }
+ratings %>% summarize(n_users = n_distinct(userId),n_movies = n_distinct(movieId))
+```
+
+```{r }
+par(mfrow=c(2,2))
+ratings %>% 
+  count(movieId) %>% 
+  ggplot(aes(n)) + 
+  geom_histogram( bins=30, color = "red") +
+  scale_x_log10() + 
+  ggtitle("Movies") +
+  labs(subtitle  ="number of ratings by movieId", 
+       x="movieId" , 
+       y="number of ratings", 
+       caption ="source data : ratings set") +
+  theme(panel.border = element_rect(colour="black", fill=NA)) 
+```
+
+This histogram shows the distribution of the number of ratings per movie on a log scale. Most movies have relatively few ratings, while a small number receive a large volume of ratings. This long-tail pattern is typical in recommendation datasets and highlights the popularity imbalance across items.
+
+```{r }
+  ratings %>% 
+  count(userId) %>% 
+  ggplot(aes(n)) + 
+  geom_histogram( bins=30, color = "gold") +
+  scale_x_log10() + 
+  ggtitle("Users") +
+  labs(subtitle ="number of ratings by UserId", 
+       x="userId" , 
+       y="number of ratings") +
+  theme(panel.border = element_rect(colour="black", fill=NA)) 
+```
+
+This histogram illustrates how many ratings each user has given. Most users rate a relatively small number of movies, while a few are highly active. The log scale reveals a wide variation in user engagement, which is important to consider when building personalized recommendation models.
+
+```{r }
+kable(head(ratings),caption = "Sample Ratings Dataset") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") 
+```
+
+```{r }
+kable(head(movies),caption = "Sample Movies Dataset") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872")
+```
+
+
+<a id="mySection5"></a>
+<font size="4">
+<B>
+Data Wrangling
+</B>
+<font>
+
+We have processed the dataset to ensure it is clean and ready for analysis. This involves merging data rating with user and movie metadata, converting data types as needed, and handling missing or inconsistent entries.
+
+
+```{r }
+genres <- as.data.frame(movies$genres, stringsAsFactors=FALSE)
+genres2 <- as.data.frame(tstrsplit(genres[,1], '[|]', 
+                                   type.convert=TRUE), 
+                         stringsAsFactors=FALSE)
+colnames(genres2) <- paste0("V", 1:ncol(genres2))  # Dynamic colnames to avoid length mismatch
+
+genre_list <- c("Action", "Adventure", "Animation", "Children", 
+                "Comedy", "Crime","Documentary", "Drama", "Fantasy",
+                "Film-Noir", "Horror", "Musical", "Mystery","Romance",
+                "Sci-Fi", "Thriller", "War", "Western")  # 18 genres
+
+# genre_matrix <- matrix(0, 10330, 18)  # 10329 movies + 1 header row
+genre_matrix <- matrix(0, nrow(movies) + 1, length(genre_list))  # dynamically match movie count
+genre_matrix[1,] <- genre_list
+colnames(genre_matrix) <- genre_list
+
+
+# Fill genre matrix
+for (i in 1:nrow(genres2)) {
+  for (c in 1:ncol(genres2)) {
+    genmat_col <- which(genre_matrix[1,] == genres2[i,c])
+    if (length(genmat_col) > 0) {
+      genre_matrix[i+1, genmat_col] <- 1
+    }
+  }
+}
+
+# Convert to data frame
+genre_matrix2 <- as.data.frame(genre_matrix[-1,], stringsAsFactors=FALSE)  # Remove header row
+for (c in 1:ncol(genre_matrix2)) {
+  genre_matrix2[,c] <- as.integer(genre_matrix2[,c])
+}
+
+# Combine with movie info
+search_matrix <- cbind(movies[,1:2], genre_matrix2)
+
+# Table display
+kable(head(search_matrix), caption = "Sample Movies Dataset") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = T, color = "white", background = "#ea7872") %>%
+  scroll_box(width = "100%", height = "300px")
+
+```
+
+
+<a id="mySection6"></a>
+<font size="4">
+<B>
+Model Exploration
+</B>
+<font>
+
+We have explored various recommendation algorithms to identify the most effective approach. Starting with baseline models, such as user-based (UBCF) and item-based collaborative filtering (IBCF), we then explored advanced techniques, including matrix factorization, to improve prediction accuracy and recommendation quality.
+
+```{r }
+library(data.table)
+
+# Convert ratings to data.table
+setDT(ratings)
+
+# Then use dcast
+ratings_wide <- dcast(ratings, userId ~ movieId, value.var = "rating")
+
+
+#Create ratings matrix. Rows = userId, Columns = movieId
+ratingmat <- dcast(ratings, userId~movieId, value.var = "rating", na.rm=FALSE)
+ratingmat <- as.matrix(ratingmat[,-1]) #remove userIds
+#Convert rating matrix into a recommenderlab sparse matrix
+ratingmat <- as(ratingmat, "realRatingMatrix")
+ratingmat
+```
+
+
+Identifying the algorithms and recommendation model
+
+```{r }
+recommender_models <- recommenderRegistry$get_entries(dataType = "realRatingMatrix")
+names(recommender_models)
+```
+
+```{r }
+lapply(recommender_models, "[[", "description")
+```
+
+```{r }
+recommender_models$IBCF_realRatingMatrix$parameters
+```
+
+```{r }
+
+recommender_models$UBCF_realRatingMatrix$parameters
+```
+
+
+```{r }
+similarity_users <- similarity(ratingmat[1:4, ], 
+                               method = "cosine", 
+                               which = "users")
+par(mfrow=c(1,2))
+as.matrix(similarity_users)
+```
+
+```{r }
+image(as.matrix(similarity_users), main = "User similarity")
+
+similarity_items <- similarity(ratingmat[, 1:4], method =
+                                 "cosine", which = "items")
+as.matrix(similarity_items)
+```
+
+```{r }
+image(as.matrix(similarity_items), main = "Movies similarity")
+```
+
+
+<a id="mySection7"></a>
+<font size="4">
+<B>
+Data Distribution
+</B>
+<font>
+
+Our purpose in using the data distribution of key variables in the dataset is to help reveal user behavior patterns and item popularity. This analysis provides valuable insights that guide model selection and optimization.
+
+
+```{r }
+vector_ratings <- as.vector(ratingmat@data)
+unique(vector_ratings) # what are unique values of ratings
+```
+
+```{r }
+table_ratings <- table(vector_ratings) # what is the count of each rating value
+vector_ratings <- vector_ratings[vector_ratings != 0] # rating == 0 are NA values
+vector_ratings <- factor(vector_ratings)
+par(mfrow=c(1,2))
+qplot(vector_ratings) + 
+  ggtitle("Distribution of the vector ratings")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The plot shows the distribution of rating values, with ratings from 1 to 5. Most ratings cluster around 3, 4, and 5, indicating users generally give positive feedback.
+
+```{r }
+image(ratingmat[1:20, 1:25], main = "Heatmap of the first 20 rows and 25 columns")
+```
+
+The heatmap visualizes the rating patterns of the first 20 users across 25 movies. The sparse distribution of colored cells highlights the typical sparsity in recommendation datasets, where most user-item pairs have no rating.
+
+Defining the minimum number of users per rated movie as 50 and the minimum views number per movie as 50
+
+```{r }
+ratings_movies <- ratingmat[rowCounts(ratingmat) > 50,
+                             colCounts(ratingmat) > 50]
+ratings_movies_norm <- normalize(ratings_movies)
+```
+
+<a id="mySection8"></a>
+<font size="4">
+<B>
+Collaborative Filtering Model
+</B>
+<font>
+
+
+We will be exploring the Item-based and User-based collaborative filtering model
+
+<a id="mySection9"></a>
+<font size="4">
+<B>
+Item-based Collaborative Filtering
+</B>
+<font>
+
+Item-based collaborative filtering, also known as item-to-item filtering, is a recommendation approach that focuses on the similarity between items. It leverages user ratings to find items that are closely related, and recommends items similar to those a user has already liked or rated highly.
+
+The training and test datasets are defined as follows:
+
+
+```{r }
+which_train <- sample(x = c(TRUE, FALSE), 
+                      size = nrow(ratings_movies),
+                      replace = TRUE, 
+                      prob = c(0.8, 0.2))
+recc_data_train <- ratings_movies[which_train, ]
+recc_data_test <- ratings_movies[!which_train, ]
+```
+
+<a id="mySection10"></a>
+<font size="4">
+<B>
+Building the IBCF model
+</B>
+<font>
+
+
+
+
+```{r }
+recommender_models <- recommenderRegistry$get_entries(dataType ="realRatingMatrix")
+recommender_models$IBCF_realRatingMatrix$parameters
+```
+
+```{r }
+recc_model <- Recommender(data = recc_data_train, 
+                          method = "IBCF",
+                          parameter = list(k = 30))
+recc_model
+```
+
+```{r }
+class(recc_model)
+```
+
+```{r }
+model_details <- getModel(recc_model)
+class(model_details$sim) # this contains a similarity matrix
+```
+
+
+```{r }
+dim(model_details$sim)
+```
+
+
+```{r }
+n_items_top <- 20
+image(model_details$sim[1:n_items_top, 1:n_items_top],
+      main = "Heatmap of the first rows and columns")
+```
+
+This heatmap displays the similarity matrix for the top 20 items based on the collaborative filtering model. It visualizes how closely related these items are to each other, which helps in making item-based recommendations.
+
+
+```{r }
+row_sums <- rowSums(model_details$sim > 0)
+table(row_sums)
+```
+
+```{r }
+col_sums <- colSums(model_details$sim > 0)
+qplot(col_sums) + stat_bin(binwidth = 1) + ggtitle("Distribution of the column count")
+```
+
+This plot shows the distribution of the number of positive similarities each item has with other items. It helps understand how many neighbors each item has in the similarity matrix, which impacts recommendation diversity.
+
+
+```{r }
+n_recommended <- 10 # the number of items to recommend to each user
+recc_predicted <- predict(object = recc_model, 
+                          newdata = recc_data_test, 
+                          n = n_recommended)
+recc_predicted
+```
+
+
+```{r }
+recc_user_1 <- recc_predicted@items[[1]] # recommendation for the first user
+movies_user_1 <- recc_predicted@itemLabels[recc_user_1]
+movies_user_2 <- movies_user_1
+for (i in 1:10){
+  movies_user_2[i] <- as.character(subset(movies, 
+                                         movies$movieId == movies_user_1[i])$title)
+}
+movies_user_2
+```
+
+
+```{r }
+recc_matrix <- sapply(recc_predicted@items, 
+                      function(x){ as.integer(colnames(ratings_movies)[x]) }) # matrix with the recommendations for each user
+#dim(recc_matrix)
+recc_matrix[,1:4]
+```
+
+```{r }
+number_of_items <- factor(table(recc_matrix))
+chart_title <- "Distribution of the number of items for IBCF"
+qplot(number_of_items) + ggtitle(chart_title)
+```
+
+This chart shows the distribution of the number of items recommended by the Item-Based Collaborative Filtering (IBCF) model. It provides insight into how frequently different recommendations occur across users.
+
+
+```{r }
+number_of_items_sorted <- sort(number_of_items, decreasing = TRUE)
+number_of_items_top <- head(number_of_items_sorted, n = 4)
+table_top <- data.frame(as.integer(names(number_of_items_top)),
+                       number_of_items_top)
+for (i in 1:4){
+  table_top[i,1] <- as.character(subset(movies, 
+                                         movies$movieId == table_top[i,1])$title)
+}
+colnames(table_top) <- c("Movie title", "No of items")
+head(table_top)
+```
+
+Item-Based Collaborative Filtering recommends items by finding similarities between items rather than users. Since items usually have more ratings than individual users, their rating patterns are more stable, reducing how often the model needs updating. When a user rates an item, similar items are quickly recommended based on the precomputed item similarity matrix.
+
+<a id="mySection11"></a>
+<font size="4">
+<B>
+User-based Collaborative Filtering Model
+</B>
+<font>
+
+User-based collaborative filtering operates on the principle that users with similar preferences tend to like similar items. It finds a set of users most similar to the target user and predicts ratings by taking a weighted average of their ratings on the items of interest.
+
+<a id="mySection12"></a>
+<font size="4">
+<B>
+Building the UBCF model
+</B>
+<font>
+
+
+
+
+```{r }
+recommender_models <- recommenderRegistry$get_entries(dataType ="realRatingMatrix")
+recommender_models$UBCF_realRatingMatrix$parameters
+```
+
+```{r }
+recc_model <- Recommender(data = recc_data_train, method = "UBCF")
+recc_model
+```
+
+```{r }
+model_details <- getModel(recc_model)
+#names(model_details)
+model_details$data
+```
+
+
+
+```{r }
+n_recommended <- 10
+recc_predicted <- predict(object = recc_model,
+                          newdata = recc_data_test, 
+                          n = n_recommended) 
+recc_predicted
+```
+
+
+```{r }
+recc_matrix <- sapply(recc_predicted@items, 
+                      function(x){ as.integer(colnames(ratings_movies)[x]) })
+#dim(recc_matrix)
+recc_matrix[, 1:4]
+```
+
+
+```{r }
+number_of_items <- factor(table(recc_matrix))
+chart_title <- "Distribution of the number of items for UBCF"
+qplot(number_of_items) + ggtitle(chart_title)
+```
+
+The chart shows the distribution of the number of items recommended by the User-Based Collaborative Filtering (UBCF) model. It highlights how many recommendations users typically receive, revealing the variability in recommendation counts across the user base.
+
+
+
+```{r }
+number_of_items_sorted <- sort(number_of_items, decreasing = TRUE)
+number_of_items_top <- head(number_of_items_sorted, n = 4)
+table_top <- data.frame(as.integer(names(number_of_items_top)), number_of_items_top)
+for (i in 1:4){
+  table_top[i,1] <- as.character(subset(movies, 
+                                         movies$movieId == table_top[i,1])$title)
+}
+colnames(table_top) <- c("Movie title", "No of items")
+head(table_top)
+```
+
+
+<a id="mySection13"></a>
+<font size="4">
+<B>
+Evaluation of model
+</B>
+<font>
+
+
+
+
+
+```{r }
+percentage_training <- 0.8
+
+min(rowCounts(ratings_movies)) 
+```
+
+
+
+
+```{r }
+items_to_keep <- 5 #number of items to generate recommendations
+rating_threshold <- 3 # threshold with the minimum rating that is considered good
+n_eval <- 1 #number of times to run evaluation
+eval_sets <- evaluationScheme(data = ratings_movies, 
+                              method = "split",
+                              train = percentage_training, 
+                              given = items_to_keep, 
+                              goodRating = rating_threshold, 
+                              k = n_eval) 
+eval_sets
+```
+
+
+```{r }
+getData(eval_sets, "train") # training set
+```
+
+
+
+```{r }
+getData(eval_sets, "known") # set with the items used to build the recommendations
+```
+
+```{r }
+getData(eval_sets, "unknown") # set with the items used to test the recommendations
+```
+
+```{r }
+# Bootstrapping the data
+
+#Bootrstrapping is another approach to split the data. The same user can be sampled more than once and, if the training set has the same size as it did earlier, there will be more users in the test set.
+
+eval_sets <- evaluationScheme(data = ratings_movies, 
+                              method = "bootstrap", 
+                              train = percentage_training, 
+                              given = items_to_keep,
+                              goodRating = rating_threshold, 
+                              k = n_eval)
+table_train <- table(eval_sets@runsTrain[[1]])
+n_repetitions <- factor(as.vector(table_train))
+
+# Using cross-validation to validate models
+
+#The k-fold cross-validation approach is the most accurate one, we split the data into some chunks, take a chunk out as the test set, and evaluate the accuracy. Then, we can do the same with each other chunk and compute the average accuracy.
+
+n_fold <- 4
+eval_sets <- evaluationScheme(data = ratings_movies, 
+                              method = "cross-validation",
+                              k = n_fold, 
+                              given = items_to_keep, 
+                              goodRating = rating_threshold)
+
+## Evaluating the ratings
+
+#k-fold approach has been picked for evaluation
+
+eval_sets <- evaluationScheme(data = ratings_movies, 
+                              method = "cross-validation",
+                              k = n_fold, 
+                              given = items_to_keep, 
+                              goodRating = rating_threshold)
+model_to_evaluate <- "IBCF"
+model_parameters <- NULL
+eval_recommender <- Recommender(data = getData(eval_sets, "train"),
+                                method = model_to_evaluate, 
+                                parameter = model_parameters)
+items_to_recommend <- 10
+eval_prediction <- predict(object = eval_recommender, 
+                           newdata = getData(eval_sets, "known"), 
+                           n = items_to_recommend, 
+                           type = "ratings")
+
+eval_accuracy <- calcPredictionAccuracy(x = eval_prediction, 
+                                        data = getData(eval_sets, "unknown"), 
+                                        byUser = TRUE)
+```
+
+<a id="mySection14"></a>
+<font size="4">
+<B>
+Accuracy Measures
+</B>
+<font>
+
+
+
+
+```{r }
+eval_accuracy <- calcPredictionAccuracy(x = eval_prediction, 
+                                        data = getData(eval_sets, "unknown"), 
+                                        byUser = FALSE) 
+eval_accuracy
+```
+
+The evaluation metrics show the model’s prediction accuracy on the test data. The Root Mean Squared Error (RMSE) is approximately 1.14, indicating the average deviation between predicted and actual ratings. The Mean Squared Error (MSE) and Mean Absolute Error (MAE) values further quantify prediction errors, with lower values reflecting better model performance.
+
+<a id="mySection15"></a>
+<font size="4">
+<B>
+Probability thresholds
+</B>
+<font>
+
+
+
+Comparing the recommendations with the views having a positive rating.
+
+```{r }
+results <- evaluate(x = eval_sets, 
+                    method = model_to_evaluate, 
+                    n = seq(10, 100, 10))
+```
+
+
+```{r }
+head(getConfusionMatrix(results)[[1]])
+```
+
+
+
+```{r }
+columns_to_sum <- c("TP", "FP", "FN", "TN")
+indices_summed <- Reduce("+", getConfusionMatrix(results))[, columns_to_sum]
+head(indices_summed)
+```
+
+
+```{r }
+plot(results, annotate = TRUE, main = "ROC curve")
+```
+
+```{r }
+plot(results, "prec/rec", annotate = TRUE, main = "Precision-recall")
+```
+
+The ROC and Precision-Recall curves demonstrate the trade-off between precision and recall as the number of recommended items increases. Higher recall comes at the cost of lower precision, highlighting the balance needed to optimize recommendation quality.
+
+<a id="mySection16"></a>
+<font size="4">
+<B>
+Comparing models
+</B>
+<font>
+
+To identify the most effective recommendation approach, we compared different collaborative filtering models. This includes both item-based and user-based methods, each evaluated using Cosine similarity and Pearson correlation metrics. Additionally, a random recommendation model was included as a baseline for benchmarking.
+
+The following models are considered for comparison
+
+Item-based collaborative filtering, using the Cosine as the distance function
+Item-based collaborative filtering, using the Pearson correlation as the distance function
+User-based collaborative filtering, using the Cosine as the distance function
+User-based collaborative filtering, using the Pearson correlation as the distance function
+Random recommendations to have a base line
+
+```{r }
+models_to_evaluate <- list(
+IBCF_cos = list(name = "IBCF", 
+                param = list(method = "cosine")),
+IBCF_cor = list(name = "IBCF", 
+                param = list(method = "pearson")),
+UBCF_cos = list(name = "UBCF", 
+                param = list(method = "cosine")),
+UBCF_cor = list(name = "UBCF", 
+                param = list(method = "pearson")),
+random = list(name = "RANDOM", param=NULL)
+)
+
+n_recommendations <- c(1, 5, seq(10, 100, 10))
+list_results <- evaluate(x = eval_sets, 
+                         method = models_to_evaluate, 
+                         n = n_recommendations)
+```
+
+
+```{r }
+sapply(list_results, class) == "evaluationResults"
+```
+
+
+```{r }
+avg_matrices <- lapply(list_results, avg)
+head(avg_matrices$IBCF_cos[, 5:8])
+```
+
+
+<a id="mySection17"></a>
+<font size="4">
+<B>
+Ideal model
+</B>
+<font>
+
+
+Comparing the chart will give oppurtunity to pick the ideal model
+
+```{r }
+plot(list_results, annotate = 1, legend = "topleft") 
+title("ROC curve")
+```
+
+
+```{r }
+plot(list_results, "prec/rec", annotate = 1, legend = "bottomright")
+title("Precision-recall")
+```
+
+
+
+The graph shows that,UBCF with cosine distance is best performing model
+
+<a id="mySection18"></a>
+<font size="4">
+<B>
+Spark Implementation
+</B>
+<font>
+
+We implemented an Alternating Least Squares (ALS) model using Spark ML to efficiently handle large-scale data and predict user ratings. This scalable approach leverages distributed computing for faster model training and evaluation.
+
+
+```{r }
+# connect to spark
+config <- spark_config()
+config$`sparklyr.shell.driver-memory` <- "8G"
+config$`sparklyr.shell.executor-memory` <- "8G"
+
+# The memory limit could not be configured on my low resouce laptop.
+sc <- spark_connect(master = "local", config = config)
+
+#Assign the dataset to Spark
+spark_df <- ratings
+
+#Building Train and Test dataset
+train <- sample(x = c(TRUE, FALSE), size = nrow(spark_df),
+                      replace = TRUE, prob = c(0.8, 0.2))
+train_df <- spark_df[train, ]
+test_df <- spark_df[!train, ]
+
+#Copy function to Spark
+spark_train <- sdf_copy_to(sc, train_df, "train_ratings", overwrite = TRUE)
+spark_test <- sdf_copy_to(sc, test_df, "test_ratings", overwrite = TRUE)
+
+
+sparkALS <- ml_als(spark_train, max_iter = 5, nonnegative = TRUE, 
+                   rating_col = "rating", user_col = "userId", item_col = "movieId")
+
+sparkPred <- sparkALS$.jobj %>%
+  invoke("transform", spark_dataframe(spark_test)) %>% collect()
+
+
+
+sparkPred <- sparkPred[!is.na(sparkPred$prediction), ] 
+
+#Calculate error
+mse_spark <- mean((sparkPred$rating - sparkPred$prediction)^2)
+rmse_spark <- sqrt(mse_spark)
+mae_spark <- mean(abs(sparkPred$rating - sparkPred$prediction))
+
+# disconnect from spark
+spark_disconnect(sc)
+
+```
+
+
+<a id="mySection19"></a>
+<font size="4">
+<B>
+Spark Accuracy Measures
+</B>
+<font>
+
+
+
+```{r }
+spark_pred_datatable <- rename(sparkPred, c("spark_prediction"="prediction"))
+spark_pred_datatable <- subset(spark_pred_datatable, select=c(userId,movieId,rating,spark_prediction)) 
+
+spark_error <- data.frame(RMSE = rmse_spark, MSE = mse_spark, MAE = mae_spark)
+spark_error
+```
+
+The Spark ALS model achieved strong prediction accuracy with an RMSE of 0.90, MSE of 0.81, and MAE of 0.73, outperforming previous models and demonstrating its effectiveness for rating prediction.
+
+<a id="mySection20"></a>
+<font size="4">
+<B>
+Spark Prediction
+</B>
+<font>
+
+
+
+```{r }
+library(DT)
+
+datatable(spark_pred_datatable, 
+          rownames = FALSE, 
+          filter = "top", 
+          options = list(pageLength = 5, scrollX = TRUE))
+
+```
+
+<a id="mySection21"></a>
+<font size="4">
+<B>
+Evaluation Metrics for the Recommended System
+</B>
+<font>
+
+In this project, we used Root Mean Square Error (RMSE) as the primary evaluation metric to assess the accuracy of predicted ratings for our recommender models (UBCF, IBCF, and SVD). RMSE measures the average magnitude of prediction errors, making it a natural choice for rating prediction systems.
+
+We selected RMSE because our main objective was to predict user ratings as accurately as possible, rather than to rank items. Among the models tested, the SVD-based recommender achieved the lowest RMSE, demonstrating superior performance in estimating user preferences.
+
+While RMSE effectively evaluates prediction accuracy, it does not fully capture how well recommendations align with user interests in top-N recommendation lists. Future work could incorporate top-N metrics such as Precision@K or Hit Rate to better evaluate recommendation relevance and user experience.
+
+
+<a id="mySection22"></a>
+<font size="4">
+<B>
+Summary
+</B>
+<font>
+
+This project analyzed Collaborative Filtering models using both Item-Based Collaborative Filtering (IBCF) and User-Based Collaborative Filtering (UBCF) on the MovieLens dataset. The results indicate that UBCF with cosine similarity delivered the best performance among the traditional approaches. Additionally, the Spark ALS model produced rating predictions that closely align with the actual ratings in the dataset, demonstrating its effectiveness for large-scale recommendation tasks.
+
+
